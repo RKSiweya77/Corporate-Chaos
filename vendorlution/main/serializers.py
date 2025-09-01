@@ -29,5 +29,14 @@ class ProductListSerializer(serializers.ModelSerializer):
         super(ProductListSerializer, self).__init__(*args, **kwargs)
         self.Meta.depth = 1
 
+class ProductDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=models.Product
+        fields =['id' ,'category', 'vendor','title','detail', 'price']
+
+    def __init__(self, *args, **kwargs):
+        super(ProductDetailSerializer, self).__init__(*args, **kwargs)
+        self.Meta.depth = 1
+
 
  
