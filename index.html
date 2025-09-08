@@ -16,18 +16,101 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
     />
-    <link rel="stylesheet" href="style.css" />
+    <style>
+      /* Custom styles */
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      
+      .category-card, .product-card, .seller-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+      
+      .category-card:hover, .product-card:hover, .seller-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+      }
+      
+      .category-card:hover .category-overlay {
+        opacity: 0.7;
+      }
+      
+      .hero-cta {
+        transition: all 0.3s ease;
+      }
+      
+      .hero-cta:hover {
+        transform: scale(1.05);
+      }
+      
+      /* Mobile responsive adjustments */
+      @media (max-width: 768px) {
+        .top-banner-links, .user-actions {
+          font-size: 0.7rem;
+        }
+        
+        .hero-content h1 {
+          font-size: 2.5rem;
+        }
+        
+        .hero-content p {
+          font-size: 1rem;
+        }
+      }
+      
+      /* Animation for search suggestions */
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      
+      #search-suggestions {
+        animation: fadeIn 0.2s ease-in-out;
+      }
+      
+      /* Loading animation for product cards */
+      .skeleton {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
+      }
+      
+      @keyframes loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+      
+      /* Neutral button styles */
+      .btn-primary {
+        background-color: #333;
+        color: white;
+      }
+      
+      .btn-primary:hover {
+        background-color: #555;
+      }
+      
+      .btn-outline {
+        border: 2px solid #333;
+        color: #333;
+      }
+      
+      .btn-outline:hover {
+        background-color: #333;
+        color: white;
+      }
+    </style>
   </head>
   <body class="font-sans">
     <!-- Top Banner -->
-    <div class="bg-black text-white text-xs py-1">
+    <div class="bg-black text-white text-xs py-1 top-banner">
       <div class="container mx-auto px-4 flex justify-between items-center">
-        <div class="flex space-x-4">
+        <div class="flex space-x-4 top-banner-links">
           <a href="#" class="hover:text-gray-300">Sell on Marketplace</a>
           <a href="#" class="hover:text-gray-300">Help</a>
           <a href="#" class="hover:text-gray-300">Customer Support</a>
         </div>
-        <div class="flex space-x-4">
+        <div class="flex space-x-4 user-actions">
           <a href="seller-register.html" class="hover:text-gray-300"
             >Register as Seller</a
           >
@@ -37,22 +120,22 @@
     </div>
 
     <!-- Header -->
-    <header class="bg-white shadow-sm">
+    <header class="bg-white shadow-sm sticky top-0 z-50">
       <div class="container mx-auto px-4 py-4">
         <div class="flex items-center justify-between">
           <!-- Logo -->
           <div class="w-32">
-            <a href="/" class="text-2xl font-bold">Venderlution</a>
+            <a href="/" class="text-2xl font-bold text-gray-900">Venderlution</a>
           </div>
 
           <!-- Search Bar -->
-          <div class="flex-1 max-w-2xl mx-8">
+          <div class="flex-1 max-w-2xl mx-4 md:mx-8">
             <div class="relative">
               <input
                 type="text"
                 id="search-input"
                 placeholder="Search for products, brands, and sellers..."
-                class="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:border-black"
+                class="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
               />
               <button
                 class="absolute right-4 top-1/2 transform -translate-y-1/2"
@@ -62,7 +145,7 @@
               <!-- Search Suggestions -->
               <div
                 id="search-suggestions"
-                class="absolute w-full bg-white mt-1 rounded-lg shadow-lg hidden z-50"
+                class="absolute w-full bg-white mt-1 rounded-lg shadow-lg hidden z-50 border border-gray-200"
               >
                 <div class="p-2">
                   <div class="text-sm text-gray-500 mb-2">Popular Searches</div>
@@ -83,38 +166,42 @@
           </div>
 
           <!-- User Actions -->
-          <div class="flex items-center space-x-6">
+          <div class="flex items-center space-x-4 md:space-x-6">
             <a href="login.html" class="text-gray-600 hover:text-black">
               <i class="far fa-user"></i>
+              <span class="hidden md:inline ml-1">Account</span>
             </a>
             <a href="#" class="text-gray-600 hover:text-black">
               <i class="far fa-heart"></i>
+              <span class="hidden md:inline ml-1">Wishlist</span>
             </a>
-            <a href="cart.html" class="text-gray-600 hover:text-black">
+            <a href="cart.html" class="text-gray-600 hover:text-black relative">
               <i class="fas fa-shopping-bag"></i>
+              <span class="hidden md:inline ml-1">Cart</span>
+              <span class="absolute -top-2 -right-2 bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">0</span>
             </a>
           </div>
         </div>
 
         <!-- Categories Navigation -->
-        <nav class="mt-4">
-          <ul class="flex space-x-6 text-sm">
+        <nav class="mt-4 overflow-x-auto whitespace-nowrap py-2">
+          <ul class="flex space-x-4 md:space-x-6 text-sm">
             <li>
-              <a href="electronics.html" class="hover:text-gray-600"
+              <a href="electronics.html" class="hover:text-gray-900 font-medium"
                 >Electronics</a
               >
             </li>
             <li>
-              <a href="fashion.html" class="hover:text-gray-600">Fashion</a>
+              <a href="fashion.html" class="hover:text-gray-900 font-medium">Fashion</a>
             </li>
-            <li><a href="#" class="hover:text-gray-600">Home & Living</a></li>
-            <li><a href="#" class="hover:text-gray-600">Beauty</a></li>
+            <li><a href="#" class="hover:text-gray-900 font-medium">Home & Living</a></li>
+            <li><a href="#" class="hover:text-gray-900 font-medium">Beauty</a></li>
             <li>
-              <a href="sports.html" class="hover:text-gray-600">Sports</a>
+              <a href="sports.html" class="hover:text-gray-900 font-medium">Sports</a>
             </li>
-            <li><a href="tech.html" class="hover:text-gray-600">Tech</a></li>
-            <li><a href="#" class="hover:text-gray-600">Accessories</a></li>
-            <li><a href="#" class="hover:text-gray-600">More</a></li>
+            <li><a href="tech.html" class="hover:text-gray-900 font-medium">Tech</a></li>
+            <li><a href="#" class="hover:text-gray-900 font-medium">Accessories</a></li>
+            <li><a href="#" class="hover:text-gray-900 font-medium">More</a></li>
           </ul>
         </nav>
       </div>
@@ -124,127 +211,404 @@
     <main>
       <!-- Hero Section -->
       <section
-        class="relative h-[500px] bg-cover bg-center"
+        class="relative h-[400px] md:h-[500px] bg-cover bg-center"
         style="
           background-image: url('https://images.pexels.com/photos/5632402/pexels-photo-5632402.jpeg');
         "
       >
         <div class="absolute inset-0 bg-black bg-opacity-50"></div>
         <div class="container mx-auto px-4 h-full flex items-center relative">
-          <div class="text-white max-w-2xl">
-            <h1 class="text-5xl font-bold mb-4">Your One-Stop Marketplace</h1>
-            <p class="text-xl mb-8">
+          <div class="text-white max-w-2xl hero-content">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">Your One-Stop Marketplace</h1>
+            <p class="text-lg md:text-xl mb-8">
               Connect with trusted sellers and find amazing products
             </p>
-            <a
-              href="seller-register.html"
-              class="bg-white text-black px-8 py-3 rounded-full hover:bg-gray-100 inline-block"
-            >
-              Start Selling
-            </a>
+            <div class="flex flex-col sm:flex-row gap-4">
+              <a
+                href="seller-register.html"
+                class="bg-white text-black px-6 py-3 rounded-full hover:bg-gray-100 inline-block text-center hero-cta font-medium"
+              >
+                Start Selling
+              </a>
+              <a
+                href="#featured-products"
+                class="border-2 border-white text-white px-6 py-3 rounded-full hover:bg-white hover:text-black inline-block text-center hero-cta font-medium"
+              >
+                Shop Now
+              </a>
+            </div>
           </div>
         </div>
       </section>
 
       <!-- Featured Categories -->
-      <section class="py-16 bg-gray-50">
+      <section class="py-12 md:py-16 bg-gray-50">
         <div class="container mx-auto px-4">
-          <h2 class="text-3xl font-bold mb-8">Shop by Category</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <h2 class="text-2xl md:text-3xl font-bold mb-6 md:mb-8 text-center">Shop by Category</h2>
+          <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             <!-- Category Cards -->
-            <div
-              class="category-card relative rounded-lg overflow-hidden shadow-lg"
-            >
+            <a href="electronics.html" class="category-card block relative rounded-lg overflow-hidden shadow-lg">
               <img
                 src="https://images.pexels.com/photos/1647976/pexels-photo-1647976.jpeg"
                 alt="Electronics"
-                class="w-full h-64 object-cover"
+                class="w-full h-40 md:h-64 object-cover"
               />
               <div
-                class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center transition-opacity"
+                class="category-overlay absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center transition-opacity"
               >
-                <h3 class="text-white text-2xl font-bold">Electronics</h3>
+                <h3 class="text-white text-xl md:text-2xl font-bold">Electronics</h3>
               </div>
-            </div>
-            <!-- More category cards... -->
+            </a>
+            
+            <a href="fashion.html" class="category-card block relative rounded-lg overflow-hidden shadow-lg">
+              <img
+                src="https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg"
+                alt="Fashion"
+                class="w-full h-40 md:h-64 object-cover"
+              />
+              <div
+                class="category-overlay absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center transition-opacity"
+              >
+                <h3 class="text-white text-xl md:text-2xl font-bold">Fashion</h3>
+              </div>
+            </a>
+            
+            <a href="home-living.html" class="category-card block relative rounded-lg overflow-hidden shadow-lg">
+              <img
+                src="https://images.pexels.com/photos/584399/living-room-couch-interior-room-584399.jpeg"
+                alt="Home & Living"
+                class="w-full h-40 md:h-64 object-cover"
+              />
+              <div
+                class="category-overlay absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center transition-opacity"
+              >
+                <h3 class="text-white text-xl md:text-2xl font-bold">Home & Living</h3>
+              </div>
+            </a>
+            
+            <a href="sports.html" class="category-card block relative rounded-lg overflow-hidden shadow-lg">
+              <img
+                src="https://images.pexels.com/photos/863988/pexels-photo-863988.jpeg"
+                alt="Sports"
+                class="w-full h-40 md:h-64 object-cover"
+              />
+              <div
+                class="category-overlay absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center transition-opacity"
+              >
+                <h3 class="text-white text-xl md:text-2xl font-bold">Sports</h3>
+              </div>
+            </a>
           </div>
         </div>
       </section>
 
       <!-- New Arrivals -->
-      <section class="py-16">
+      <section id="featured-products" class="py-12 md:py-16">
         <div class="container mx-auto px-4">
-          <h2 class="text-3xl font-bold mb-8">New Arrivals</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div class="flex justify-between items-center mb-6 md:mb-8">
+            <h2 class="text-2xl md:text-3xl font-bold">New Arrivals</h2>
+            <a href="#" class="text-gray-700 hover:text-gray-900 font-medium">View All &rarr;</a>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
             <!-- Product Cards -->
-            <div
-              class="product-card bg-white rounded-lg shadow-lg overflow-hidden"
-            >
-              <img
-                src="https://images.pexels.com/photos/1647976/pexels-photo-1647976.jpeg"
-                alt="Product"
-                class="w-full h-48 object-cover"
-              />
+            <div class="product-card bg-white rounded-lg shadow-lg overflow-hidden">
+              <div class="relative">
+                <img
+                  src="https://images.pexels.com/photos/1647976/pexels-photo-1647976.jpeg"
+                  alt="Latest iPhone"
+                  class="w-full h-48 object-cover"
+                />
+                <button class="absolute top-2 right-2 bg-white rounded-full p-2 shadow-md hover:bg-gray-100">
+                  <i class="far fa-heart text-gray-600"></i>
+                </button>
+              </div>
               <div class="p-4">
-                <h3 class="text-lg font-semibold">Latest iPhone</h3>
+                <h3 class="text-lg font-semibold mb-1">Latest iPhone</h3>
                 <p class="text-gray-600 text-sm mb-2">By Apple Store</p>
+                <div class="flex items-center mb-2">
+                  <div class="flex text-yellow-400">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star-half-alt"></i>
+                  </div>
+                  <span class="text-gray-500 text-sm ml-2">(128)</span>
+                </div>
                 <div class="flex justify-between items-center">
                   <span class="text-xl font-bold">R 10500</span>
                   <button
-                    class="bg-black text-white px-4 py-2 rounded-full text-sm hover:bg-gray-800"
+                    class="btn-primary px-4 py-2 rounded-full text-sm transition-colors"
                   >
                     View Details
                   </button>
                 </div>
               </div>
             </div>
-            <!-- More product cards... -->
+            
+            <div class="product-card bg-white rounded-lg shadow-lg overflow-hidden">
+              <div class="relative">
+                <img
+                  src="https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg"
+                  alt="Running Shoes"
+                  class="w-full h-48 object-cover"
+                />
+                <button class="absolute top-2 right-2 bg-white rounded-full p-2 shadow-md hover:bg-gray-100">
+                  <i class="far fa-heart text-gray-600"></i>
+                </button>
+              </div>
+              <div class="p-4">
+                <h3 class="text-lg font-semibold mb-1">Running Shoes</h3>
+                <p class="text-gray-600 text-sm mb-2">By Nike</p>
+                <div class="flex items-center mb-2">
+                  <div class="flex text-yellow-400">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="far fa-star"></i>
+                  </div>
+                  <span class="text-gray-500 text-sm ml-2">(89)</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-xl font-bold">R 2200</span>
+                  <button
+                    class="btn-primary px-4 py-2 rounded-full text-sm transition-colors"
+                  >
+                    View Details
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="product-card bg-white rounded-lg shadow-lg overflow-hidden">
+              <div class="relative">
+                <img
+                  src="https://images.pexels.com/photos/90946/pexels-photo-90946.jpeg"
+                  alt="Smart Watch"
+                  class="w-full h-48 object-cover"
+                />
+                <button class="absolute top-2 right-2 bg-white rounded-full p-2 shadow-md hover:bg-gray-100">
+                  <i class="far fa-heart text-gray-600"></i>
+                </button>
+              </div>
+              <div class="p-4">
+                <h3 class="text-lg font-semibold mb-1">Smart Watch</h3>
+                <p class="text-gray-600 text-sm mb-2">By Samsung</p>
+                <div class="flex items-center mb-2">
+                  <div class="flex text-yellow-400">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                  </div>
+                  <span class="text-gray-500 text-sm ml-2">(204)</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-xl font-bold">R 3500</span>
+                  <button
+                    class="btn-primary px-4 py-2 rounded-full text-sm transition-colors"
+                  >
+                    View Details
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="product-card bg-white rounded-lg shadow-lg overflow-hidden">
+              <div class="relative">
+                <img
+                  src="https://images.pexels.com/photos/1275929/pexels-photo-1275929.jpeg"
+                  alt="Headphones"
+                  class="w-full h-48 object-cover"
+                />
+                <button class="absolute top-2 right-2 bg-white rounded-full p-2 shadow-md hover:bg-gray-100">
+                  <i class="far fa-heart text-gray-600"></i>
+                </button>
+              </div>
+              <div class="p-4">
+                <h3 class="text-lg font-semibold mb-1">Wireless Headphones</h3>
+                <p class="text-gray-600 text-sm mb-2">By Sony</p>
+                <div class="flex items-center mb-2">
+                  <div class="flex text-yellow-400">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star-half-alt"></i>
+                  </div>
+                  <span class="text-gray-500 text-sm ml-2">(167)</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-xl font-bold">R 2800</span>
+                  <button
+                    class="btn-primary px-4 py-2 rounded-full text-sm transition-colors"
+                  >
+                    View Details
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       <!-- Featured Sellers -->
-      <section class="py-16 bg-gray-50">
+      <section class="py-12 md:py-16 bg-gray-50">
         <div class="container mx-auto px-4">
-          <h2 class="text-3xl font-bold mb-8">Featured Sellers</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="flex justify-between items-center mb-6 md:mb-8">
+            <h2 class="text-2xl md:text-3xl font-bold">Featured Sellers</h2>
+            <a href="#" class="text-gray-700 hover:text-gray-900 font-medium">View All &rarr;</a>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             <!-- Seller Cards -->
             <div class="seller-card bg-white rounded-lg shadow-lg p-6">
               <div class="flex items-center mb-4">
                 <img
-                  src="IMG_20221231_130049.jpg"
-                  alt="Seller"
+                  src="https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg"
+                  alt="Tech Rissman"
                   class="w-16 h-16 rounded-full object-cover"
                 />
                 <div class="ml-4">
                   <h3 class="text-xl font-semibold">Tech Rissman</h3>
                   <p class="text-gray-600">Electronics Specialist</p>
+                  <div class="flex items-center mt-1">
+                    <div class="flex text-yellow-400 text-sm">
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star-half-alt"></i>
+                    </div>
+                    <span class="text-gray-500 text-sm ml-2">4.5/5</span>
+                  </div>
                 </div>
               </div>
               <p class="text-gray-600 mb-4">
                 Premium electronics and gadgets with expert service.
               </p>
               <button
-                class="w-full bg-black text-white py-2 rounded-full hover:bg-gray-800"
+                class="w-full btn-primary py-2 rounded-full transition-colors"
               >
                 Visit Store
               </button>
             </div>
-            <!-- More seller cards... -->
+            
+            <div class="seller-card bg-white rounded-lg shadow-lg p-6">
+              <div class="flex items-center mb-4">
+                <img
+                  src="https://images.pexels.com/photos/1187810/pexels-photo-1187810.jpeg"
+                  alt="Fashion Hub"
+                  class="w-16 h-16 rounded-full object-cover"
+                />
+                <div class="ml-4">
+                  <h3 class="text-xl font-semibold">Fashion Hub</h3>
+                  <p class="text-gray-600">Clothing & Accessories</p>
+                  <div class="flex items-center mt-1">
+                    <div class="flex text-yellow-400 text-sm">
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                    </div>
+                    <span class="text-gray-500 text-sm ml-2">4.9/5</span>
+                  </div>
+                </div>
+              </div>
+              <p class="text-gray-600 mb-4">
+                Trendy fashion for all ages with the latest styles.
+              </p>
+              <button
+                class="w-full btn-primary py-2 rounded-full transition-colors"
+              >
+                Visit Store
+              </button>
+            </div>
+            
+            <div class="seller-card bg-white rounded-lg shadow-lg p-6">
+              <div class="flex items-center mb-4">
+                <img
+                  src="https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg"
+                  alt="Home Essentials"
+                  class="w-16 h-16 rounded-full object-cover"
+                />
+                <div class="ml-4">
+                  <h3 class="text-xl font-semibold">Home Essentials</h3>
+                  <p class="text-gray-600">Home & Living Products</p>
+                  <div class="flex items-center mt-1">
+                    <div class="flex text-yellow-400 text-sm">
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="fas fa-star"></i>
+                      <i class="far fa-star"></i>
+                    </div>
+                    <span class="text-gray-500 text-sm ml-2">4.2/5</span>
+                  </div>
+                </div>
+              </div>
+              <p class="text-gray-600 mb-4">
+                Everything you need to make your house a home.
+              </p>
+              <button
+                class="w-full btn-primary py-2 rounded-full transition-colors"
+              >
+                Visit Store
+              </button>
+            </div>
           </div>
+        </div>
+      </section>
+      
+      <!-- Newsletter Section -->
+      <section class="py-12 md:py-16 bg-gray-100">
+        <div class="container mx-auto px-4 text-center">
+          <h2 class="text-2xl md:text-3xl font-bold mb-4">Subscribe to Our Newsletter</h2>
+          <p class="text-gray-600 max-w-2xl mx-auto mb-6">
+            Stay updated with the latest products, exclusive deals, and seller updates.
+          </p>
+          <form class="max-w-md mx-auto flex flex-col sm:flex-row gap-2">
+            <input
+              type="email"
+              placeholder="Your email address"
+              class="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
+              required
+            />
+            <button
+              class="btn-primary px-6 py-3 rounded-lg transition-colors"
+            >
+              Subscribe
+            </button>
+          </form>
         </div>
       </section>
     </main>
 
     <!-- Footer -->
-    <footer class="bg-gray-900 text-white py-16">
+    <footer class="bg-gray-900 text-white py-12 md:py-16">
       <div class="container mx-auto px-4">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
-            <h3 class="text-lg font-bold mb-4">About Marketplace</h3>
-            <p class="text-gray-400">
+            <h3 class="text-lg font-bold mb-4">About Venderlution</h3>
+            <p class="text-gray-400 mb-4">
               Your trusted platform for connecting buyers and sellers worldwide.
             </p>
+            <div class="flex space-x-4">
+              <a href="#" class="text-gray-400 hover:text-white"
+                ><i class="fab fa-facebook-f"></i
+              ></a>
+              <a href="#" class="text-gray-400 hover:text-white"
+                ><i class="fab fa-twitter"></i
+              ></a>
+              <a href="#" class="text-gray-400 hover:text-white"
+                ><i class="fab fa-instagram"></i
+              ></a>
+              <a href="#" class="text-gray-400 hover:text-white"
+                ><i class="fab fa-linkedin-in"></i
+              ></a>
+            </div>
           </div>
           <div>
             <h3 class="text-lg font-bold mb-4">Quick Links</h3>
@@ -268,47 +632,48 @@
             </ul>
           </div>
           <div>
-            <h3 class="text-lg font-bold mb-4">Follow Us</h3>
-            <div class="flex space-x-4">
-              <a href="#" class="text-gray-400 hover:text-white"
-                ><i class="fab fa-facebook-f"></i
-              ></a>
-              <a href="#" class="text-gray-400 hover:text-white"
-                ><i class="fab fa-twitter"></i
-              ></a>
-              <a href="#" class="text-gray-400 hover:text-white"
-                ><i class="fab fa-instagram"></i
-              ></a>
-              <a href="#" class="text-gray-400 hover:text-white"
-                ><i class="fab fa-linkedin-in"></i
-              ></a>
-            </div>
+            <h3 class="text-lg font-bold mb-4">Customer Service</h3>
+            <ul class="space-y-2">
+              <li>
+                <a href="#" class="text-gray-400 hover:text-white">Help Center</a>
+              </li>
+              <li>
+                <a href="#" class="text-gray-400 hover:text-white">Returns & Refunds</a>
+              </li>
+              <li>
+                <a href="#" class="text-gray-400 hover:text-white">Shipping Info</a>
+              </li>
+              <li>
+                <a href="#" class="text-gray-400 hover:text-white">FAQs</a>
+              </li>
+            </ul>
           </div>
           <div>
-            <h3 class="text-lg font-bold mb-4">Newsletter</h3>
-            <form class="space-y-4">
-              <input
-                type="email"
-                placeholder="Your email address"
-                class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white"
-              />
-              <button
-                class="w-full bg-white text-black py-2 rounded-lg hover:bg-gray-100"
-              >
-                Subscribe
-              </button>
-            </form>
+            <h3 class="text-lg font-bold mb-4">Contact Info</h3>
+            <ul class="space-y-2 text-gray-400">
+              <li class="flex items-start">
+                <i class="fas fa-map-marker-alt mt-1 mr-2"></i>
+                <span>123 Market Street, City, Country</span>
+              </li>
+              <li class="flex items-start">
+                <i class="fas fa-phone-alt mt-1 mr-2"></i>
+                <span>+1 234 567 8900</span>
+              </li>
+              <li class="flex items-start">
+                <i class="fas fa-envelope mt-1 mr-2"></i>
+                <span>info@venderlution.com</span>
+              </li>
+            </ul>
           </div>
         </div>
         <div
           class="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400"
         >
-          <p>&copy; 2025 Tech Titans. All rights reserved.</p>
+          <p>&copy; 2025 Venderlution. All rights reserved.</p>
         </div>
       </div>
     </footer>
 
-    <script src="js/app.js"></script>
     <script>
       // Initialize search suggestions
       document.addEventListener("DOMContentLoaded", function () {
@@ -341,6 +706,17 @@
             }
           });
         }
+        
+        // Add to cart functionality
+        const addToCartButtons = document.querySelectorAll('.add-to-cart');
+        addToCartButtons.forEach(button => {
+          button.addEventListener('click', function() {
+            const product = this.closest('.product-card');
+            const productName = product.querySelector('h3').textContent;
+            alert(`${productName} added to cart!`);
+            // Here you would normally update cart count and storage
+          });
+        });
       });
     </script>
   </body>
