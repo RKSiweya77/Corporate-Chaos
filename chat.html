@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>All Chats - Venderlution</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .chat-list-card:hover { background-color: #f3f4f6; }
+    .active-chat { background-color: #e2e8f0; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <!-- Header -->
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="index.html" class="text-2xl font-bold text-gray-900">Venderlution</a>
+      <a href="index.html" class="text-blue-600 hover:underline">Back to Home</a>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6 text-center">Your Chats</h1>
+    <div class="max-w-2xl mx-auto">
+      <!-- Chat List -->
+      <div class="bg-white rounded-lg shadow divide-y divide-gray-200" id="chat-list">
+        <a href="#" class="flex items-center px-6 py-4 chat-list-card hover:bg-gray-100 transition cursor-pointer" data-seller="Apple Store">
+          <div class="flex-shrink-0 w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mr-4">
+            <i class="fas fa-user text-gray-500 text-xl"></i>
+          </div>
+          <div class="flex-1">
+            <div class="font-semibold text-gray-900">Apple Store</div>
+            <div class="text-sm text-gray-500 truncate">Hi! How can I help you today?</div>
+          </div>
+          <div class="ml-4 text-xs text-gray-400">2m ago</div>
+        </a>
+        <a href="#" class="flex items-center px-6 py-4 chat-list-card hover:bg-gray-100 transition cursor-pointer" data-seller="Nike">
+          <div class="flex-shrink-0 w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mr-4">
+            <i class="fas fa-user text-gray-500 text-xl"></i>
+          </div>
+          <div class="flex-1">
+            <div class="font-semibold text-gray-900">Nike</div>
+            <div class="text-sm text-gray-500 truncate">Your order is ready for pickup!</div>
+          </div>
+          <div class="ml-4 text-xs text-gray-400">10m ago</div>
+        </a>
+        <a href="#" class="flex items-center px-6 py-4 chat-list-card hover:bg-gray-100 transition cursor-pointer" data-seller="Samsung">
+          <div class="flex-shrink-0 w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mr-4">
+            <i class="fas fa-user text-gray-500 text-xl"></i>
+          </div>
+          <div class="flex-1">
+            <div class="font-semibold text-gray-900">Samsung</div>
+            <div class="text-sm text-gray-500 truncate">Thank you for your feedback!</div>
+          </div>
+          <div class="ml-4 text-xs text-gray-400">1h ago</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- Chat Modal -->
+    <div id="chat-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display:none;">
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
+        <div class="flex justify-between items-center border-b px-6 py-4">
+          <h2 class="font-bold text-lg" id="chat-modal-seller">Chat</h2>
+          <button id="close-chat-modal" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="px-6 py-4 h-64 overflow-y-auto" id="chat-modal-messages">
+          <div class="text-gray-400 text-center mt-16"><i class="fas fa-comments text-3xl mb-2"></i><p>No messages yet</p></div>
+        </div>
+        <div class="flex border-t px-6 py-4">
+          <input type="text" id="chat-modal-input" class="flex-1 px-4 py-2 border border-gray-300 rounded-l focus:outline-none" placeholder="Type a message..." />
+          <button id="chat-modal-send" class="btn-primary px-4 py-2 rounded-r">Send</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+<script>
+  // Open chat modal when clicking a chat item
+  document.querySelectorAll('.chat-list-card').forEach(card => {
+    card.addEventListener('click', function(e) {
+      e.preventDefault();
+      const seller = this.getAttribute('data-seller');
+      document.getElementById('chat-modal-seller').textContent = `Chat with ${seller}`;
+      document.getElementById('chat-modal-messages').innerHTML = `<div class='text-gray-400 text-center mt-16'><i class='fas fa-comments text-3xl mb-2'></i><p>No messages yet</p></div>`;
+      document.getElementById('chat-modal').style.display = 'flex';
+    });
+  });
+
+  // Close chat modal
+  document.getElementById('close-chat-modal').addEventListener('click', function() {
+    document.getElementById('chat-modal').style.display = 'none';
+  });
+
+  // Send message (demo only)
+  document.getElementById('chat-modal-send').addEventListener('click', function() {
+    const input = document.getElementById('chat-modal-input');
+    const msg = input.value.trim();
+    if (msg) {
+      const messages = document.getElementById('chat-modal-messages');
+      if (messages.querySelector('.text-gray-400')) messages.innerHTML = '';
+      const div = document.createElement('div');
+      div.className = 'mb-2 text-right';
+      div.innerHTML = `<span class='inline-block bg-blue-600 text-white px-4 py-2 rounded-lg'>${msg}</span>`;
+      messages.appendChild(div);
+      input.value = '';
+      messages.scrollTop = messages.scrollHeight;
+    }
+  });
+</script>
+</html>
+</body>
+</html>
