@@ -1,4 +1,4 @@
-from rest_framework import generics,permissions,pagination
+from rest_framework import generics,permissions,pagination,viewsets
 from rest_framework import serializers
 from . import serializers
 from . import models
@@ -43,3 +43,13 @@ class OrderDetail(generics.ListAPIView):
         order=models.Order.objects.get(id=order_id)
         order_items=models.OrderItems.objects.filter(order=order)
         return order_items
+
+
+class CustomerAddressViewSet(viewsets.ModelViewSet):
+    serializer_class=serializers.CustomerAddressSerializer
+    queryset=models.CustomerAddress.objects.all()
+
+     
+
+
+
