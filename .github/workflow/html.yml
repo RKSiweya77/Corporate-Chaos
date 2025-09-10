@@ -1,0 +1,25 @@
+name: HTML Validation
+
+# Trigger workflow on push or pull request to main branch
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate-html:
+    runs-on: windows-latest
+
+    steps:
+      # Checkout the repo code
+      - uses: actions/checkout@v3
+
+      # Use a GitHub Action from Marketplace to validate HTML files
+      - name: Validate HTML
+        uses: Cyb3r-Jak3/html5validator-action@v7.2.0
+        with:
+          root: '.'  # Directory to scan for HTML files, '.' means repo root
+          blacklist: ''  # Optional: folders or files to exclude
