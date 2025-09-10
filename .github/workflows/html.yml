@@ -11,7 +11,7 @@ on:
 
 jobs:
   validate-html:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
       # Checkout the repo code
