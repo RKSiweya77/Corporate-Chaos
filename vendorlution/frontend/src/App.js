@@ -26,16 +26,129 @@ function App() {
 
     <main className='mt-4'>
       <div className='container'>
+        <h3>Latest Products <a href = '#' className='float-end btn btn-sm btn-dark '>View All Products<i class="fa-solid fa-arrow-right-long "></i></a></h3>  
       <div className='row'>
-        <div className='col-12 col-md-3 mb-2'>
-          <div className="card">
+         {/*Product Box*/}
+        <div className='col-12 col-md-3 mb-4'>
+          <div className="card shadow">
             <img src={logo} className="card-img-top" alt="..."/>
           <div className="card-body">
-            <h5 className="card-title">Product title</h5>
+            <h4 className="card-title">Product title</h4>
+            <h5 className="card-title">Price: <span className='text-muted' >R 500</span></h5>
           </div>
-          <div className='card-footer'> </div>
+          <div className='card-footer'>
+            <button title="Add to Cart" className='btn btn-dark btn-sm'><i className="fa-solid fa-cart-arrow-down fa-2x"></i></button>
+            <button title="Add to Wishlist" className='btn btn-danger btn-sm ms-2'><i className="fa-solid fa-heart fa-2x"></i></button>
+          </div>
          </div>
         </div>
+        {/*Product Box End*/}
+         {/*Product Box*/}
+        <div className='col-12 col-md-3 mb-4'>
+          <div className="card shadow">
+            <img src={logo} className="card-img-top" alt="..."/>
+          <div className="card-body">
+            <h4 className="card-title">Product title</h4>
+            <h5 className="card-title">Price: <span className='text-muted' >R 500</span></h5>
+          </div>
+          <div className='card-footer'>
+            <button title="Add to Cart" className='btn btn-dark btn-sm'><i className="fa-solid fa-cart-arrow-down fa-2x"></i></button>
+            <button title="Add to Wishlist" className='btn btn-danger btn-sm ms-2'><i className="fa-solid fa-heart fa-2x"></i></button>
+          </div>
+         </div>
+        </div>
+        {/*Product Box End*/}
+         {/*Product Box*/}
+        <div className='col-12 col-md-3 mb-4'>
+          <div className="card shadow">
+            <img src={logo} className="card-img-top" alt="..."/>
+          <div className="card-body">
+            <h4 className="card-title">Product title</h4>
+            <h5 className="card-title">Price: <span className='text-muted' >R 500</span></h5>
+          </div>
+          <div className='card-footer'>
+            <button title="Add to Cart" className='btn btn-dark btn-sm'><i className="fa-solid fa-cart-arrow-down fa-2x"></i></button>
+            <button title="Add to Wishlist" className='btn btn-danger btn-sm ms-2'><i className="fa-solid fa-heart fa-2x"></i></button>
+          </div>
+         </div>
+        </div>
+        {/*Product Box End*/}
+         {/*Product Box*/}
+        <div className='col-12 col-md-3 mb-4'>
+          <div className="card shadow">
+            <img src={logo} className="card-img-top" alt="..."/>
+          <div className="card-body">
+            <h4 className="card-title">Product title</h4>
+            <h5 className="card-title">Price: <span className='text-muted' >R 500</span></h5>
+          </div>
+          <div className='card-footer'>
+            <button title="Add to Cart" className='btn btn-dark btn-sm'><i className="fa-solid fa-cart-arrow-down fa-2x"></i></button>
+            <button title="Add to Wishlist" className='btn btn-danger btn-sm ms-2'><i className="fa-solid fa-heart fa-2x"></i></button>
+          </div>
+         </div>
+        </div>
+        {/*Product Box End*/}
+        {/*Product Box*/}
+        <div className='col-12 col-md-3 mb-4'>
+          <div className="card shadow">
+            <img src={logo} className="card-img-top" alt="..."/>
+          <div className="card-body">
+            <h4 className="card-title">Product title</h4>
+            <h5 className="card-title">Price: <span className='text-muted' >R 500</span></h5>
+          </div>
+          <div className='card-footer'>
+            <button title="Add to Cart" className='btn btn-dark btn-sm'><i className="fa-solid fa-cart-arrow-down fa-2x"></i></button>
+            <button title="Add to Wishlist" className='btn btn-danger btn-sm ms-2'><i className="fa-solid fa-heart fa-2x"></i></button>
+          </div>
+         </div>
+        </div>
+        {/*Product Box End*/}
+        {/*Product Box*/}
+        <div className='col-12 col-md-3 mb-4'>
+          <div className="card shadow">
+            <img src={logo} className="card-img-top" alt="..."/>
+          <div className="card-body">
+            <h4 className="card-title">Product title</h4>
+            <h5 className="card-title">Price: <span className='text-muted' >R 500</span></h5>
+          </div>
+          <div className='card-footer'>
+            <button title="Add to Cart" className='btn btn-dark btn-sm'><i className="fa-solid fa-cart-arrow-down fa-2x"></i></button>
+            <button title="Add to Wishlist" className='btn btn-danger btn-sm ms-2'><i className="fa-solid fa-heart fa-2x"></i></button>
+          </div>
+         </div>
+        </div>
+        {/*Product Box End*/}
+        {/*Product Box*/}
+        <div className='col-12 col-md-3 mb-4'>
+          <div className="card shadow">
+            <img src={logo} className="card-img-top" alt="..."/>
+          <div className="card-body">
+            <h4 className="card-title">Product title</h4>
+            <h5 className="card-title">Price: <span className='text-muted' >R 500</span></h5>
+          </div>
+          <div className='card-footer'>
+            <button title="Add to Cart" className='btn btn-dark btn-sm'><i className="fa-solid fa-cart-arrow-down fa-2x"></i></button>
+            <button title="Add to Wishlist" className='btn btn-danger btn-sm ms-2'><i className="fa-solid fa-heart fa-2x"></i></button>
+          </div>
+         </div>
+        </div>
+        {/*Product Box End*/}
+        {/*Product Box*/}
+        <div className='col-12 col-md-3 mb-4'>
+          <div className="card shadow">
+            <img src={logo} className="card-img-top" alt="..."/>
+          <div className="card-body">
+            <h4 className="card-title">Product title</h4>
+            <h5 className="card-title">Price: <span className='text-muted' >R 500</span></h5>
+          </div>
+          <div className='card-footer'>
+            <button title="Add to Cart" className='btn btn-dark btn-sm'><i className="fa-solid fa-cart-arrow-down fa-2x"></i></button>
+            <button title="Add to Wishlist" className='btn btn-danger btn-sm ms-2'><i className="fa-solid fa-heart fa-2x"></i></button>
+          </div>
+         </div>
+        </div>
+        {/*Product Box End*/}
+
        </div>
       </div>
     </main>
