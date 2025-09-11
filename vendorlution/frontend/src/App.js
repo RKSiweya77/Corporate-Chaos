@@ -26,8 +26,9 @@ function App() {
 
     <main className='mt-4'>
       <div className='container'>
+        {/*Latest Products*/}
         <h3>Latest Products <a href = '#' className='float-end btn btn-sm btn-dark '>View All Products<i class="fa-solid fa-arrow-right-long "></i></a></h3>  
-      <div className='row'>
+      <div className='row mb-4'>
          {/*Product Box*/}
         <div className='col-12 col-md-3 mb-4'>
           <div className="card shadow">
@@ -150,6 +151,54 @@ function App() {
         {/*Product Box End*/}
 
        </div>
+       {/*End Latest Products*/}
+       
+        {/*Popular Categories */}
+        <h3>Popular Categories <a href = '#' className='float-end btn btn-sm btn-dark '>View All Categories<i class="fa-solid fa-arrow-right-long "></i></a></h3>  
+      <div className='row mb-4'>
+         {/*Category Box*/}
+        <div className='col-12 col-md-3 mb-4'>
+          <div className="card shadow">
+            <img src={logo} className="card-img-top" alt="..."/>
+          <div className="card-body">
+            <h4 className="card-title">Category title</h4>
+          </div>
+         </div>
+        </div>
+        {/*Category Box End*/}
+        {/*Category Box*/}
+        <div className='col-12 col-md-3 mb-4'>
+          <div className="card shadow">
+            <img src={logo} className="card-img-top" alt="..."/>
+          <div className="card-body">
+            <h4 className="card-title">Category title</h4>
+          </div>
+         </div>
+        </div>
+        {/*Category Box End*/}
+        {/*Category Box*/}
+        <div className='col-12 col-md-3 mb-4'>
+          <div className="card shadow">
+            <img src={logo} className="card-img-top" alt="..."/>
+          <div className="card-body">
+            <h4 className="card-title">Category title</h4>
+          </div>
+         </div>
+        </div>
+        {/*Category Box End*/}
+        {/*Category Box*/}
+        <div className='col-12 col-md-3 mb-4'>
+          <div className="card shadow">
+            <img src={logo} className="card-img-top" alt="..."/>
+          <div className="card-body">
+            <h4 className="card-title">Category title</h4>
+          </div>
+         </div>
+        </div>
+        {/*Category Box End*/}
+
+       </div>
+       {/*End Popular Categories*/}
       </div>
     </main>
     </>
