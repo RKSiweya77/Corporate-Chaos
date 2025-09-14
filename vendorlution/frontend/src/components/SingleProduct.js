@@ -11,9 +11,9 @@ function SingleProduct(props) {
                     <div className='card-footer'>
                     <button title="Add to Cart" className='btn btn-dark btn-sm'><i className="fa-solid fa-cart-arrow-down fa-2x"></i></button>
                     <button title="Add to Wishlist" className='btn btn-danger btn-sm ms-2'><i className="fa-solid fa-heart fa-2x"></i></button>
-                    </div>
+               </div>
         </div>
-        </div>
+  </div>
     )
 }
 export default SingleProduct;

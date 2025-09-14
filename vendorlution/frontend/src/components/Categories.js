@@ -11,7 +11,7 @@ function Categories(){
                      <div className="card shadow">
                        <img src={logo} className="card-img-top" alt="..."/>
                      <div className="card-body">
-                       <h4 className="card-title"><Link to="/category/vendor/1">Vendor</Link></h4>
+                       <h4 className="card-title"><Link to="/category/vendor/1">Fashion</Link></h4>
                      </div>
                     </div>
                    </div>
@@ -21,7 +21,7 @@ function Categories(){
                      <div className="card shadow">
                        <img src={logo} className="card-img-top" alt="..."/>
                      <div className="card-body">
-                       <h4 className="card-title"><Link to="/">Category title</Link></h4>
+                       <h4 className="card-title"><Link to="/category/python/1">Category title</Link></h4>
                      </div>
                     </div>
                    </div>
