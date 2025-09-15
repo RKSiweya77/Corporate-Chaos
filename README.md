@@ -35,8 +35,8 @@ Sellers – Small businesses, artisans, and local vendors wanting to showcase an
 
 # TECHNICAL REQUIREMENTS 
 1.Front-end development(HTML,CSS,JS)
-2.Backend development(Express.js)
-3.Database design(SqlLite)
+2.Backend development(Django)
+3.Database design(PostgreSQL)
 4.Implementation of security
 
 # SETUP INSTRUCTIONS 
