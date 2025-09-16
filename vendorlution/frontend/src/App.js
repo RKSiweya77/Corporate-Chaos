@@ -6,6 +6,8 @@ import 'bootstrap/dist/js/bootstrap.js';
 import Header from './components/Header';
 import Home from './components/Home';
 import Categories from './components/Categories';
+import AllProducts from './components/AllProducts';
+import ProductDetail from './components/ProductDetail';
 import Footer from './components/Footer'; 
 import CategoryProducts from './components/CategoryProducts';
 
@@ -16,8 +18,10 @@ function App() {
     <Header />
      <Routes>
       <Route path='/' element={<Home />}/>
+       <Route path='/products' element={<AllProducts />}/>
       <Route path='/categories' element={<Categories />}/>
       <Route path='/category/:category_slug/:category_id' element={<CategoryProducts />}/>
+      <Route path='/product/:product_slug/:product_id' element={<ProductDetail />}/>
     </Routes>
     <Footer />
     </>

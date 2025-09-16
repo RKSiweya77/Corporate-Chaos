@@ -1,13 +1,14 @@
 import { Link } from 'react-router';
 import logo from '../logo.svg'
 import SingleProduct from './SingleProduct';
+
 function Home(){
         return(
     <main className='mt-4'>
       <div className='container'>
         {/*Latest Products*/}
       <div className='row mb-4'>
-        <h3>Latest Products <a href = '#' className='float-end btn btn-sm btn-dark '>View All Products<i class="fa-solid fa-arrow-right-long "></i></a></h3>
+        <h3>Latest Products <a href = '#' className='float-end btn btn-sm btn-dark '><Link to="/products">View All Products</Link><i class="fa-solid fa-arrow-right-long "></i></a></h3>
           <SingleProduct/>
           <SingleProduct/>
           <SingleProduct/>

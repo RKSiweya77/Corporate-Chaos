@@ -1,11 +1,16 @@
+//Packages
+import { Link } from 'react-router-dom';
+//Assets
 import logo from '../logo.svg';
 function SingleProduct(props) {
     return (
         <div className='col-12 col-md-3 mb-4'>
                 <div className="card shadow">
-                    <img src={logo} className="card-img-top" alt="..."/>
+                    <Link to="/product/fashionItem_1/123">
+                       <img src={logo} className="card-img-top" alt="..."/>
+                    </Link>
                     <div className="card-body">
-                    <h4 className="card-title">{props.title}</h4>
+                      <h4 className="card-title"><Link to="/product/category/123">{props.title}</Link></h4>
                     <h5 className="card-title">Price: <span className='text-muted' >R 500</span></h5>
                     </div>
                     <div className='card-footer'>
