@@ -1,11 +1,38 @@
 import logo from '../logo.svg';
 import { Link } from 'react-router-dom';
+import SingleProduct from './SingleProduct';
 function ProductDetail(){
     return(
        <section className="container mt-4">
          <div className="row">
                 <div className="col-4">
-                   <img src={logo} className="img-thumbnail" alt="..."/>
+                    <div id="productThumbnSlider" className="carousel carousel-dark slide carousel-fade" data-bs-ride="carousel">
+                        <div className="carousel-indicators">
+                            <button type="button" data-bs-target="#productThumbnSlider" data-bs-slide-to="0" className="active" aria-current="true" aria-label="Slide 1"></button>
+                            <button type="button" data-bs-target="#productThumbnSlider" data-bs-slide-to="1" aria-label="Slide 2"></button>
+                            <button type="button" data-bs-target="#productThumbnSlider" data-bs-slide-to="2" aria-label="Slide 3"></button>
+                        </div>
+                        <div className="carousel-inner">
+                            <div className="carousel-item active">
+                            <img src={logo} className="img-thumbnail mb-5" alt="..." />
+                            </div>
+                            <div className="carousel-item">
+                            <img src={logo} className="img-thumbnail mb-5" alt="..." />
+                            </div>
+                            <div className="carousel-item">
+                            <img src={logo} className="img-thumbnail mb-5" alt="..." />
+                            </div>
+                        </div>
+                        <button className="carousel-control-prev" type="button" data-bs-target="#productThumbnSlider" data-bs-slide="prev">
+                            <span className="carousel-control-prev-icon" aria-hidden="true"></span>
+                            <span className="visually-hidden">Previous</span>
+                        </button>
+                        <button className="carousel-control-next" type="button" data-bs-target="#productThumbnSlider" data-bs-slide="next">
+                            <span className="carousel-control-next-icon" aria-hidden="true"></span>
+                            <span className="visually-hidden">Next</span>
+                        </button>
+                        </div>
+
                  </div> 
                  <div className="col-8">
                     <h3>Product Title</h3>
@@ -30,6 +57,51 @@ function ProductDetail(){
                     </div>
                  </div>
           </div> 
+          {/*Related Products*/}
+            <h3 className='mt-5 mb-3'>Related Products</h3>
+            <div id="relatedProductsSlider" className="carousel carousel-dark slide " data-bs-ride="carousel">
+                <div className="carousel-indicators">
+                    <button type="button" data-bs-target="#relatedProductsSlider" data-bs-slide-to="0" className="active" aria-current="true" aria-label="Slide 1"></button>
+                    <button type="button" data-bs-target="#relatedProductsSlider" data-bs-slide-to="1" aria-label="Slide 2"></button>
+                    <button type="button" data-bs-target="#relatedProductsSlider" data-bs-slide-to="2" aria-label="Slide 3"></button>
+                </div>
+                <div className="carousel-inner">
+                    <div className="carousel-item active">
+                        <div className='row mb-5'>
+                            <SingleProduct />
+                            <SingleProduct />
+                            <SingleProduct />
+                            <SingleProduct />
+                        </div>
+                    </div>
+                    <div className="carousel-item">
+                        <div className='row mb-5'>
+                            <SingleProduct />
+                            <SingleProduct />
+                            <SingleProduct />
+                            <SingleProduct />
+                        </div>
+                    </div>
+                    <div className="carousel-item">
+                        <div className='row mb-5'>
+                            <SingleProduct />
+                            <SingleProduct />
+                            <SingleProduct />
+                            <SingleProduct />
+                        </div>
+                    </div>
+                </div>
+                {/*<button className="carousel-control-prev" type="button" data-bs-target="#relatedProductsSlider" data-bs-slide="prev">
+                    <span className="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span className="visually-hidden">Previous</span>
+                </button>
+                <button className="carousel-control-next" type="button" data-bs-target="#relatedProductsSlider" data-bs-slide="next">
+                    <span className="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span className="visually-hidden">Next</span>
+                </button>*/}
+            </div>
+          {/*End Related Products*/}
+
        </section>
 
     );
