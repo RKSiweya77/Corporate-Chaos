@@ -61,7 +61,7 @@ function Checkout(props) {
                                 <tr>
                                     <td colSpan='3' align='center'>
                                         <Link to='/categories' className='btn btn-secondary'>Continue Shopping</Link>
-                                        <Link className='btn btn-success ms-1'>Proceed to ayment</Link>
+                                        <Link className='btn btn-success ms-1'>Proceed to Payment</Link>
                                     </td>
 
                                     
