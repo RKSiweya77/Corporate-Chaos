@@ -25,6 +25,8 @@ import Orders from './components/Customer/Orders';
 import Wishlist from './components/Customer/Wishlist';
 import Profile from './components/Customer/Profile';
 import ChangePassword from './components/Customer/ChangePassword';
+import AddressList from './components/Customer/AddressList';
+import AddAddress from './components/Customer/AddAddress';
 
 
 function App() {
@@ -49,6 +51,9 @@ function App() {
       <Route path='/customer/wishlist' element={<Wishlist />}/>
       <Route path='/customer/profile' element={<Profile />}/> 
       <Route path='/customer/change-password' element={<ChangePassword />}/>
+      <Route path='/customer/addresses' element={<AddressList />}/>
+      <Route path='/customer/add-address' element={<AddAddress />}/>
+
       
 
     </Routes>
