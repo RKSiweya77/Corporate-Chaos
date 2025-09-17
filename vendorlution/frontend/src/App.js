@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {Routes,Route} from 'react-router-dom';
 
 //Assets
@@ -28,6 +29,14 @@ import ChangePassword from './components/Customer/ChangePassword';
 import AddressList from './components/Customer/AddressList';
 import AddAddress from './components/Customer/AddAddress';
 
+//Vendor Panel
+import VendorRegister from './components/Vendor/VendorRegister';
+import VendorLogin  from './components/Vendor/VendorLogin';
+import VendorDashboard  from './components/Vendor/VendorDashboard';
+import VendorProducts from './components/Vendor/VendorProducts';
+import AddProduct from "./components/Vendor/AddProduct";
+
+
 
 function App() {
   return (
@@ -43,7 +52,7 @@ function App() {
        <Route path='/order/success' element={<OrderSuccess />}/> 
        <Route path='/order/failure' element={<OrderFailure />}/> 
 
-      //Customer
+      {/*Customer Routes*/}
       <Route path='/customer/register' element={<Register />}/> 
       <Route path='/customer/login' element={<Login />}/> 
       <Route path='/customer/dashboard' element={<Dashboard />}/> 
@@ -53,6 +62,14 @@ function App() {
       <Route path='/customer/change-password' element={<ChangePassword />}/>
       <Route path='/customer/addresses' element={<AddressList />}/>
       <Route path='/customer/add-address' element={<AddAddress />}/>
+      
+
+      {/*Vendor Routes*/}
+      <Route path='/vendor/register' element={<VendorRegister />}/> 
+      <Route path='/vendor/login' element={<VendorLogin />}/> 
+      <Route path='/vendor/dashboard' element={<VendorDashboard />}/> 
+      <Route path='/vendor/products' element={<VendorProducts />}/> 
+      <Route path='/vendor/add-product' element={<AddProduct />}/> 
 
       
 
