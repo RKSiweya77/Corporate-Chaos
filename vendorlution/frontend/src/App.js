@@ -14,6 +14,8 @@ import ProductDetail from './components/ProductDetail';
 import Footer from './components/Footer'; 
 import CategoryProducts from './components/CategoryProducts';
 import Checkout from './components/Checkout';
+import OrderSuccess from './components/OrderSuccess';
+import OrderFailure from './components/OrderFailure';
 
 //Customer Panel
 import Register from './components/Customer/Register';
@@ -32,13 +34,16 @@ function App() {
       <Route path='/categories' element={<Categories />}/>
       <Route path='/category/:category_slug/:category_id' element={<CategoryProducts />}/>
       <Route path='/product/:product_slug/:product_id' element={<ProductDetail />}/>
-      <Route path='/checkout' element={<Checkout />}/>  
+      <Route path='/checkout' element={<Checkout />}/> 
+       <Route path='/order/success' element={<OrderSuccess />}/> 
+       <Route path='/order/failure' element={<OrderFailure />}/> 
 
       //Customer
       <Route path='/customer/register' element={<Register />}/> 
       <Route path='/customer/login' element={<Login />}/> 
       <Route path='/customer/dashboard' element={<Dashboard />}/> 
       <Route path='/customer/orders' element={<Orders />}/> 
+
     </Routes>
     <Footer />
     </>

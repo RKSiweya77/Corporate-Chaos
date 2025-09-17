@@ -19,6 +19,7 @@ function Orders() {
                                     <th>#</th>
                                    <th>Product</th>
                                    <th>Price</th> 
+                                   <th>Status</th>
                                 </tr>
                                 </thead>
                                  <tbody>
@@ -29,6 +30,7 @@ function Orders() {
                                         <Link><p>Phone</p></Link> 
                                     </td>
                                     <td>R 500</td>
+                                    <td><span className='text-success'><i className='fa fa-check-circle'></i> Completed</span></td>
                                 </tr>
                                 <tr>
                                     <td>2</td>
@@ -37,6 +39,7 @@ function Orders() {
                                         <Link><p>Speaker</p></Link> 
                                     </td>
                                     <td>R 500</td>
+                                    <td><span className='text-danger'><i className='fa-solid fa-circle-xmark danger'></i> Cancelled</span></td>
                                 </tr>
                                 <tr>
                                     <td>3</td>
@@ -45,6 +48,7 @@ function Orders() {
                                         <Link><p>Earbuds</p></Link> 
                                     </td>
                                     <td>R 500</td>
+                                    <td><span className='text-secondary'><i className='fa fa-spin fa-spinner'></i> Processing</span></td>
                                 </tr>
                                 <tr>
                                     <td>4</td>
@@ -53,6 +57,7 @@ function Orders() {
                                         <Link><p>Trouser</p></Link> 
                                     </td>
                                     <td>R 500</td>
+                                    <td><span className='text-success'><i className='fa fa-check-circle'></i> Completed</span></td>
                                 </tr>
                             </tbody> 
                             </table>
