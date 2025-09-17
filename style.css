@@ -1,0 +1,247 @@
+/* Custom styles for Marketplace */
+
+/* Transitions */
+.transition-all {
+    transition: all 0.3s ease;
+}
+
+/* Product card hover effects */
+.product-card img {
+    transition: transform 0.3s ease;
+}
+
+.product-card:hover img {
+    transform: scale(1.05);
+}
+
+/* Category card hover effects */
+.category-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    transition: background-color 0.3s ease;
+}
+
+.category-card:hover::before {
+    background: rgba(0, 0, 0, 0.6);
+}
+
+/* Search suggestions animation */
+#search-suggestions {
+    transform-origin: top;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+#search-suggestions.hidden {
+    transform: scaleY(0);
+    opacity: 0;
+}
+
+#search-suggestions:not(.hidden) {
+    transform: scaleY(1);
+    opacity: 1;
+}
+
+/* Button hover effects */
+.hover-scale {
+    transition: transform 0.2s ease;
+}
+
+.hover-scale:hover {
+    transform: scale(1.05);
+}
+
+/* Seller card hover effects */
+.seller-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.seller-card:hover {
+    transform: translateY(-5px);
+}
+
+/* Newsletter input focus effect */
+.newsletter-input:focus {
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Loading spinner */
+.spinner {
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top: 3px solid #000;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .product-card img {
+        height: 200px;
+    }
+    
+    .category-card {
+        height: 180px;
+    }
+}
+
+/* Utility classes */
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.aspect-ratio-square {
+    aspect-ratio: 1;
+}
+
+.shadow-hover {
+    transition: box-shadow 0.3s ease;
+}
+
+.shadow-hover:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Product grid layout */
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+/* Category grid layout */
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+/* Seller profile card */
+.seller-profile {
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background: white;
+    transition: transform 0.3s ease;
+}
+
+.seller-profile:hover {
+    transform: translateY(-4px);
+}
+
+/* Search bar enhancements */
+.search-container {
+    position: relative;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    padding-right: 3rem;
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    transition: border-color 0.2s ease;
+}
+
+.search-input:focus {
+    border-color: #000;
+    outline: none;
+}
+
+/* Price badge */
+.price-badge {
+    background: #000;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+}
+
+/* Rating stars */
+.rating-stars {
+    color: #fbbf24;
+}
+
+/* Sale badge */
+.sale-badge {
+    background: #dc2626;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-weight: 600;
+}
+
+/* Stock status */
+.in-stock {
+    color: #059669;
+}
+
+.out-of-stock {
+    color: #dc2626;
+}
+
+/* Category icon */
+.category-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    background: #f3f4f6;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Footer newsletter */
+.newsletter-container {
+    background: #f3f4f6;
+    padding: 2rem;
+    border-radius: 0.5rem;
+}
+
+/* Mobile menu */
+.mobile-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+}
+
+.mobile-menu.active {
+    transform: translateX(0);
+}
