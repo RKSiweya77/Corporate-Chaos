@@ -1,8 +1,11 @@
 import {Routes,Route} from 'react-router-dom';
 
+//Assets
 import logo from './logo.svg';
 import 'bootstrap/dist/css/bootstrap.css';
 import 'bootstrap/dist/js/bootstrap.js';
+
+//Website
 import Header from './components/Header';
 import Home from './components/Home';
 import Categories from './components/Categories';
@@ -12,8 +15,11 @@ import Footer from './components/Footer';
 import CategoryProducts from './components/CategoryProducts';
 import Checkout from './components/Checkout';
 
+//Customer Panel
 import Register from './components/Customer/Register';
 import Login from './components/Customer/Login';
+import Dashboard from './components/Customer/Dashboard';
+import Orders from './components/Customer/Orders';
 
 
 function App() {
@@ -27,8 +33,12 @@ function App() {
       <Route path='/category/:category_slug/:category_id' element={<CategoryProducts />}/>
       <Route path='/product/:product_slug/:product_id' element={<ProductDetail />}/>
       <Route path='/checkout' element={<Checkout />}/>  
+
+      //Customer
       <Route path='/customer/register' element={<Register />}/> 
       <Route path='/customer/login' element={<Login />}/> 
+      <Route path='/customer/dashboard' element={<Dashboard />}/> 
+      <Route path='/customer/orders' element={<Orders />}/> 
     </Routes>
     <Footer />
     </>
