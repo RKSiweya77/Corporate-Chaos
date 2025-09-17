@@ -12,6 +12,9 @@ import Footer from './components/Footer';
 import CategoryProducts from './components/CategoryProducts';
 import Checkout from './components/Checkout';
 
+import Register from './components/Customer/Register';
+import Login from './components/Customer/Login';
+
 
 function App() {
   return (
@@ -24,6 +27,8 @@ function App() {
       <Route path='/category/:category_slug/:category_id' element={<CategoryProducts />}/>
       <Route path='/product/:product_slug/:product_id' element={<ProductDetail />}/>
       <Route path='/checkout' element={<Checkout />}/>  
+      <Route path='/customer/register' element={<Register />}/> 
+      <Route path='/customer/login' element={<Login />}/> 
     </Routes>
     <Footer />
     </>
