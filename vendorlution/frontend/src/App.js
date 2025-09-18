@@ -35,6 +35,8 @@ import VendorLogin  from './components/Vendor/VendorLogin';
 import VendorDashboard  from './components/Vendor/VendorDashboard';
 import VendorProducts from './components/Vendor/VendorProducts';
 import AddProduct from "./components/Vendor/AddProduct";
+import VendorOrders from "./components/Vendor/VendorOrders";
+import VendorCustomers from "./components/Vendor/VendorCustomers";
 
 
 
@@ -70,7 +72,8 @@ function App() {
       <Route path='/vendor/dashboard' element={<VendorDashboard />}/> 
       <Route path='/vendor/products' element={<VendorProducts />}/> 
       <Route path='/vendor/add-product' element={<AddProduct />}/> 
-
+      <Route path='/vendor/orders' element={<VendorOrders/>}/> 
+      <Route path="/vendor/customers" element={<VendorCustomers />} />
       
 
     </Routes>
