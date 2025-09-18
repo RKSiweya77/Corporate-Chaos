@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seller Registration - Marketplace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body class="bg-gray-50 font-sans">
+    <div class="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div class="sm:mx-auto sm:w-full sm:max-w-md">
+            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                Register as a Seller
+            </h2>
+            <p class="mt-2 text-center text-sm text-gray-600">
+                Start selling your products today
+            </p>
+        </div>
+
+        <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+            <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+                <form class="space-y-6" action="#" method="POST">
+                    <div>
+                        <label for="business-name" class="block text-sm font-medium text-gray-700">
+                            Business Name
+                        </label>
+                        <div class="mt-1">
+                            <input id="business-name" name="business-name" type="text" required
+                                class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="business-type" class="block text-sm font-medium text-gray-700">
+                            Business Type
+                        </label>
+                        <div class="mt-1">
+                            <select id="business-type" name="business-type" required
+                                class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
+                                <option value="">Select a category</option>
+                                <option value="electronics">Electronics</option>
+                                <option value="fashion">Fashion</option>
+                                <option value="home">Home & Living</option>
+                                <option value="beauty">Beauty & Health</option>
+                                <option value="sports">Sports & Outdoors</option>
+                                <option value="tech">Technology</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700">
+                            Business Email
+                        </label>
+                        <div class="mt-1">
+                            <input id="email" name="email" type="email" required
+                                class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="phone" class="block text-sm font-medium text-gray-700">
+                            Business Phone
+                        </label>
+                        <div class="mt-1">
+                            <input id="phone" name="phone" type="tel" required
+                                class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="address" class="block text-sm font-medium text-gray-700">
+                            Business Address
+                        </label>
+                        <div class="mt-1">
+                            <textarea id="address" name="address" rows="3" required
+                                class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black sm:text-sm"></textarea>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700">
+                            Password
+                        </label>
+                        <div class="mt-1">
+                            <input id="password" name="password" type="password" required
+                                class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black sm:text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <button type="submit"
+                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black">
+                            Register as Seller
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+</body>
+</html>
