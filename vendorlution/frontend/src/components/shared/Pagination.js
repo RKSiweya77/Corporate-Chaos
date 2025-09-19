@@ -1,23 +1,28 @@
-import { Link } from "react-router-dom";
-
-function Pagination() {
+function Pagination({ page, totalPages, setPage }) {
   return (
-    <nav className="mt-4">
-      <ul className="pagination justify-content-center">
-        <li className="page-item disabled">
-          <Link className="page-link rounded-pill">Previous</Link>
+    <nav>
+      <ul className="pagination">
+        <li className={`page-item ${page === 1 ? "disabled" : ""}`}>
+          <button className="page-link" onClick={() => setPage(page - 1)}>
+            Previous
+          </button>
         </li>
-        <li className="page-item active">
-          <Link className="page-link rounded-pill">1</Link>
-        </li>
-        <li className="page-item">
-          <Link className="page-link rounded-pill">2</Link>
-        </li>
-        <li className="page-item">
-          <Link className="page-link rounded-pill">3</Link>
-        </li>
-        <li className="page-item">
-          <Link className="page-link rounded-pill">Next</Link>
+
+        {Array.from({ length: totalPages }, (_, i) => (
+          <li
+            key={i}
+            className={`page-item ${page === i + 1 ? "active" : ""}`}
+          >
+            <button className="page-link" onClick={() => setPage(i + 1)}>
+              {i + 1}
+            </button>
+          </li>
+        ))}
+
+        <li className={`page-item ${page === totalPages ? "disabled" : ""}`}>
+          <button className="page-link" onClick={() => setPage(page + 1)}>
+            Next
+          </button>
         </li>
       </ul>
     </nav>
