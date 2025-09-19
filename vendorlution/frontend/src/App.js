@@ -1,10 +1,9 @@
 import { Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
 
-// Assets
 import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap/dist/js/bootstrap.js";
 
-// Website (new modular components)
 import Header from "./components/shared/Header";
 import Footer from "./components/shared/Footer";
 import HomeLanding from "./components/Homepage/HomeLanding";
@@ -14,12 +13,10 @@ import CategoryProducts from "./components/products/CategoryProducts";
 import ProductDetail from "./components/products/ProductDetail";
 import Checkout from "./components/checkout/Checkout";
 
-// New pages (View All sections)
 import ExploreVendors from "./components/Vendor/ExploreVendors";
 import PopularProducts from "./components/products/PopularProducts";
 import NewArrivals from "./components/products/NewArrivals";
 
-// Customer Panel
 import Register from "./components/Customer/Register";
 import Login from "./components/Customer/Login";
 import Dashboard from "./components/Customer/Dashboard";
@@ -40,7 +37,6 @@ import CustomerSupport from "./components/Customer/CustomerSupport";
 import PaymentMethods from "./components/Customer/PaymentMethods";
 import ResolutionCenter from "./components/Customer/ResolutionCenter";
 
-// Vendor Panel
 import VendorRegister from "./components/Vendor/VendorRegister";
 import VendorLogin from "./components/Vendor/VendorLogin";
 import VendorDashboard from "./components/Vendor/VendorDashboard";
@@ -50,7 +46,7 @@ import VendorOrders from "./components/Vendor/VendorOrders";
 import VendorCustomers from "./components/Vendor/VendorCustomers";
 import VendorReports from "./components/Vendor/VendorReports";
 import VendorProfile from "./components/Vendor/VendorProfile";
-import VendorPublicProfile from "./components/Vendor/VendorPublicProfile"; // public
+import VendorPublicProfile from "./components/Vendor/VendorPublicProfile";
 import VendorWallet from "./components/Vendor/VendorWallet";
 import PayoutsHistory from "./components/Vendor/PayoutsHistory";
 import VendorInbox from "./components/Vendor/VendorInbox";
@@ -63,28 +59,22 @@ import VendorStore from "./components/Vendor/VendorStore";
 
 function App() {
   return (
-    <>
+    <AuthProvider>
       <Header />
       <main>
         <Routes>
-          {/* Website Routes */}
+          {/* Website */}
           <Route path="/" element={<HomeLanding />} />
           <Route path="/products" element={<AllProducts />} />
           <Route path="/products/popular" element={<PopularProducts />} />
           <Route path="/products/new" element={<NewArrivals />} />
           <Route path="/categories" element={<Categories />} />
-          <Route
-            path="/category/:category_slug/:category_id"
-            element={<CategoryProducts />}
-          />
-          <Route
-            path="/product/:product_slug/:product_id"
-            element={<ProductDetail />}
-          />
+          <Route path="/category/:category_slug/:category_id" element={<CategoryProducts />} />
+          <Route path="/product/:product_slug/:product_id" element={<ProductDetail />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/explore-vendors" element={<ExploreVendors />} />
 
-          {/* Customer Routes */}
+          {/* Customer */}
           <Route path="/customer/register" element={<Register />} />
           <Route path="/customer/login" element={<Login />} />
           <Route path="/customer/dashboard" element={<Dashboard />} />
@@ -105,7 +95,7 @@ function App() {
           <Route path="/customer/payment-methods" element={<PaymentMethods />} />
           <Route path="/customer/resolution-center" element={<ResolutionCenter />} />
 
-          {/* Vendor Routes */}
+          {/* Vendor */}
           <Route path="/vendor/register" element={<VendorRegister />} />
           <Route path="/vendor/login" element={<VendorLogin />} />
           <Route path="/vendor/dashboard" element={<VendorDashboard />} />
@@ -128,7 +118,7 @@ function App() {
         </Routes>
       </main>
       <Footer />
-    </>
+    </AuthProvider>
   );
 }
 
