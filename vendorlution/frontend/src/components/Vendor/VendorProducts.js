@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import VendorSidebar from "./VendorSidebar";
-import logo from "../../logo.svg"; // placeholder image
+import logo from "../../logo.png"; // placeholder image
 
 function VendorProducts() {
   // Mock products (replace later with API call)

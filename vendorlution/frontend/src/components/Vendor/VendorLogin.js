@@ -1,7 +1,7 @@
 //Packages
 import { Link } from 'react-router-dom';
 //Assets
-import logo from '../../logo.svg';
+import logo from '../../logo.png';
 function Login(props) {
     return (
         <div className='container mr-4'>
