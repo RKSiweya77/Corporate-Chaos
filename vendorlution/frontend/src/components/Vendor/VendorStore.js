@@ -1,71 +1,111 @@
-// src/components/Vendor/VendorStore.js
+import React from "react";
 import { useParams, Link } from "react-router-dom";
-import ProductCard from "../Homepage/ProductCard";
+import { motion } from "framer-motion";
 import logo from "../../logo.png";
+import Pagination from "../shared/Pagination";
 
 function VendorStore() {
   const { vendor_slug, vendor_id } = useParams();
 
-  // Mock vendor data (replace with API later)
+  // Mock vendor data (replace with API call later)
   const vendor = {
     id: vendor_id,
     name: "TechWorld Store",
+    description: "Affordable electronics and accessories.",
     banner: logo,
-    profileImg: logo,
-    description: "Trusted seller of electronics and gadgets.",
-    rating: 4.5,
+    logo: logo,
+    products: Array.from({ length: 20 }, (_, i) => ({
+      id: i + 1,
+      title: `Product ${i + 1}`,
+      price: 500 + i * 10,
+      image: logo,
+    })),
   };
 
+  // Pagination state (for demo, page size = 6)
+  const pageSize = 6;
+  const [page, setPage] = React.useState(1);
+  const startIndex = (page - 1) * pageSize;
+  const paginatedProducts = vendor.products.slice(
+    startIndex,
+    startIndex + pageSize
+  );
+  const totalPages = Math.ceil(vendor.products.length / pageSize);
+
   return (
-    <main className="mt-4">
-      <div className="container">
-        {/* Vendor Header */}
-        <div className="card border-0 shadow-sm mb-4">
-          <div className="card-body text-center">
-            <img
-              src={vendor.banner}
-              alt={vendor.name}
-              className="img-fluid rounded mb-3"
-              style={{ maxHeight: "200px", objectFit: "cover", width: "100%" }}
-            />
-            <img
-              src={vendor.profileImg}
-              alt={vendor.name}
-              className="rounded-circle border mb-2"
-              style={{ width: "80px", height: "80px", objectFit: "cover" }}
-            />
-            <h3 className="fw-bold">{vendor.name}</h3>
-            <p className="text-muted small">{vendor.description}</p>
-            <p className="text-warning">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <i
-                  key={i}
-                  className={`fa fa-star${i < vendor.rating ? "" : "-o"}`}
-                />
-              ))}
-              <span className="ms-2">{vendor.rating}/5</span>
-            </p>
-            <Link to="/customer/inbox" className="btn btn-sm btn-dark">
-              <i className="fa fa-comments me-1"></i> Chat with Vendor
+    <div className="container mt-3">
+      {/* Vendor Banner */}
+      <div className="card mb-4 border-0 shadow-sm">
+        <img
+          src={vendor.banner}
+          alt="Vendor Banner"
+          className="card-img-top"
+          style={{ maxHeight: "200px", objectFit: "cover" }}
+        />
+        <div className="card-body text-center">
+          <img
+            src={vendor.logo}
+            alt="Vendor Logo"
+            className="rounded-circle border mb-2"
+            width="80"
+            height="80"
+            style={{ objectFit: "cover" }}
+          />
+          <h4>{vendor.name}</h4>
+          <p className="text-muted">{vendor.description}</p>
+
+          {/* Chat with Seller + Profile Links */}
+          <div className="d-flex justify-content-center gap-2 mt-3">
+            <Link
+              to={`/customer/inbox?vendor=${vendor.id}`}
+              className="btn btn-sm btn-dark"
+            >
+              <i className="fa fa-comments me-1"></i> Chat with Seller
+            </Link>
+            <Link
+              to={`/vendor/public-profile/${vendor.id}`}
+              className="btn btn-sm btn-outline-dark"
+            >
+              View Profile
             </Link>
           </div>
         </div>
-
-        {/* Vendor Products */}
-        <h4 className="mb-3">Products by {vendor.name}</h4>
-        <div className="row g-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="col-6 col-md-4 col-lg-3">
-              <ProductCard
-                title={`Product ${i + 1}`}
-                price={1000 + i * 100}
-                slug={`vendor-${vendor_id}-item-${i + 1}`}
-              />
-            </div>
-          ))}
-        </div>
       </div>
-    </main>
+
+      {/* Products */}
+      <h5 className="mb-3">Products</h5>
+      <div className="row g-3">
+        {paginatedProducts.map((p) => {
+          const slug = p.title.toLowerCase().replace(/\s+/g, "-");
+          return (
+            <motion.div
+              key={p.id}
+              className="col-12 col-md-6 col-lg-4"
+              whileHover={{ y: -4 }}
+            >
+              <div className="card h-100 shadow-sm border-0">
+                <img src={p.image} className="card-img-top" alt={p.title} />
+                <div className="card-body">
+                  <h6 className="fw-bold">{p.title}</h6>
+                  <p className="fw-semibold">R {p.price}</p>
+                  <Link
+                    to={`/product/${slug}/${p.id}`}
+                    className="btn btn-sm btn-outline-dark"
+                  >
+                    View Product
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Pagination */}
+      <div className="mt-4 d-flex justify-content-center">
+        <Pagination page={page} totalPages={totalPages} setPage={setPage} />
+      </div>
+    </div>
   );
 }
 

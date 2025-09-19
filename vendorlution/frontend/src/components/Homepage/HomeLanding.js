@@ -5,22 +5,38 @@ import FeaturedVendors from "./FeaturedVendors";
 import HowItWorks from "./HowItWorks";
 import Testimonials from "./Testimonials";
 import FloatingChatButton from "./FloatingChatButton";
-import "./homepage.css";
 
 function HomeLanding() {
   return (
-    <main className="mt-4">
-      <div className="container">
-        <Hero />
+    <>
+      <Hero />
+      <div className="container py-4">
         <CategoryScroller />
-        <ProductGridSection title="New Arrivals" linkTo="/products" count={8} />
-        <ProductGridSection title="Popular Products" linkTo="/products" count={8} />
+
+        {/* New Arrivals */}
+        <ProductGridSection
+          title="New Arrivals"
+          linkTo="/products/new"
+          count={8}
+          variant="new"
+        />
+
+        {/* Popular Products */}
+        <ProductGridSection
+          title="Popular Products"
+          linkTo="/products/popular"
+          count={8}
+          variant="popular"
+        />
+
+        {/* Featured Vendors */}
         <FeaturedVendors />
+
         <HowItWorks />
         <Testimonials />
       </div>
       <FloatingChatButton />
-    </main>
+    </>
   );
 }
 

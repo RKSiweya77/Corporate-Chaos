@@ -14,7 +14,7 @@ function FeaturedVendors() {
     <section className="mb-4">
       <div className="d-flex align-items-center justify-content-between mb-2">
         <h3 className="mb-0">Featured Vendors</h3>
-        <Link to="/vendor/dashboard" className="btn btn-sm btn-dark">
+        <Link to="/explore-vendors" className="btn btn-sm btn-dark">
           Explore Vendors
         </Link>
       </div>
@@ -34,7 +34,7 @@ function FeaturedVendors() {
                 <Link
                   to={`/vendor/store/${v.name
                     .toLowerCase()
-                    .replace(/\\s+/g, "-")}/${v.id}`}
+                    .replace(/\s+/g, "-")}/${v.id}`}
                   className="btn btn-sm btn-outline-dark mt-2"
                 >
                   View Store
@@ -47,4 +47,5 @@ function FeaturedVendors() {
     </section>
   );
 }
+
 export default FeaturedVendors;

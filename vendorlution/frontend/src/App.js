@@ -14,6 +14,11 @@ import CategoryProducts from "./components/products/CategoryProducts";
 import ProductDetail from "./components/products/ProductDetail";
 import Checkout from "./components/checkout/Checkout";
 
+// New pages (View All sections)
+import ExploreVendors from "./components/Vendor/ExploreVendors";
+import PopularProducts from "./components/products/PopularProducts";
+import NewArrivals from "./components/products/NewArrivals";
+
 // Customer Panel
 import Register from "./components/Customer/Register";
 import Login from "./components/Customer/Login";
@@ -45,6 +50,7 @@ import VendorOrders from "./components/Vendor/VendorOrders";
 import VendorCustomers from "./components/Vendor/VendorCustomers";
 import VendorReports from "./components/Vendor/VendorReports";
 import VendorProfile from "./components/Vendor/VendorProfile";
+import VendorPublicProfile from "./components/Vendor/VendorPublicProfile"; // public
 import VendorWallet from "./components/Vendor/VendorWallet";
 import PayoutsHistory from "./components/Vendor/PayoutsHistory";
 import VendorInbox from "./components/Vendor/VendorInbox";
@@ -60,63 +66,66 @@ function App() {
     <>
       <Header />
       <main>
-      <Routes>
-        {/* Website Routes */}
-        <Route path="/" element={<HomeLanding />} />
-        <Route path="/products" element={<AllProducts />} />
-        <Route path="/categories" element={<Categories />} />
-        <Route
-          path="/category/:category_slug/:category_id"
-          element={<CategoryProducts />}
-        />
-        <Route
-          path="/product/:product_slug/:product_id"
-          element={<ProductDetail />}
-        />
+        <Routes>
+          {/* Website Routes */}
+          <Route path="/" element={<HomeLanding />} />
+          <Route path="/products" element={<AllProducts />} />
+          <Route path="/products/popular" element={<PopularProducts />} />
+          <Route path="/products/new" element={<NewArrivals />} />
+          <Route path="/categories" element={<Categories />} />
+          <Route
+            path="/category/:category_slug/:category_id"
+            element={<CategoryProducts />}
+          />
+          <Route
+            path="/product/:product_slug/:product_id"
+            element={<ProductDetail />}
+          />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/explore-vendors" element={<ExploreVendors />} />
 
-        {/* Customer Routes */}
-        <Route path="/customer/register" element={<Register />} />
-        <Route path="/customer/login" element={<Login />} />
-        <Route path="/customer/dashboard" element={<Dashboard />} />
-        <Route path="/customer/orders" element={<Orders />} />
-        <Route path="/customer/orders/:id" element={<OrderDetail />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/customer/wishlist" element={<Wishlist />} />
-        <Route path="/customer/profile" element={<Profile />} />
-        <Route path="/customer/change-password" element={<ChangePassword />} />
-        <Route path="/customer/addresses" element={<AddressList />} />
-        <Route path="/customer/add-address" element={<AddAddress />} />
-        <Route path="/customer/inbox" element={<CustomerInbox />} />
-        <Route path="/customer/wallet" element={<CustomerWallet />} />
-        <Route path="/customer/coupons" element={<CustomerCoupons />} />
-        <Route path="/customer/reviews" element={<CustomerReviews />} />
-        <Route path="/customer/notifications" element={<CustomerNotifications />} />
-        <Route path="/customer/support" element={<CustomerSupport />} />
-        <Route path="/customer/payment-methods" element={<PaymentMethods />} />
-        <Route path="/customer/resolution-center" element={<ResolutionCenter />} />
+          {/* Customer Routes */}
+          <Route path="/customer/register" element={<Register />} />
+          <Route path="/customer/login" element={<Login />} />
+          <Route path="/customer/dashboard" element={<Dashboard />} />
+          <Route path="/customer/orders" element={<Orders />} />
+          <Route path="/customer/orders/:id" element={<OrderDetail />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/customer/wishlist" element={<Wishlist />} />
+          <Route path="/customer/profile" element={<Profile />} />
+          <Route path="/customer/change-password" element={<ChangePassword />} />
+          <Route path="/customer/addresses" element={<AddressList />} />
+          <Route path="/customer/add-address" element={<AddAddress />} />
+          <Route path="/customer/inbox" element={<CustomerInbox />} />
+          <Route path="/customer/wallet" element={<CustomerWallet />} />
+          <Route path="/customer/coupons" element={<CustomerCoupons />} />
+          <Route path="/customer/reviews" element={<CustomerReviews />} />
+          <Route path="/customer/notifications" element={<CustomerNotifications />} />
+          <Route path="/customer/support" element={<CustomerSupport />} />
+          <Route path="/customer/payment-methods" element={<PaymentMethods />} />
+          <Route path="/customer/resolution-center" element={<ResolutionCenter />} />
 
-        {/* Vendor Routes */}
-        <Route path="/vendor/register" element={<VendorRegister />} />
-        <Route path="/vendor/login" element={<VendorLogin />} />
-        <Route path="/vendor/dashboard" element={<VendorDashboard />} />
-        <Route path="/vendor/products" element={<VendorProducts />} />
-        <Route path="/vendor/add-product" element={<AddProduct />} />
-        <Route path="/vendor/orders" element={<VendorOrders />} />
-        <Route path="/vendor/customers" element={<VendorCustomers />} />
-        <Route path="/vendor/reports" element={<VendorReports />} />
-        <Route path="/vendor/profile" element={<VendorProfile />} />
-        <Route path="/vendor/wallet" element={<VendorWallet />} />
-        <Route path="/vendor/payouts" element={<PayoutsHistory />} />
-        <Route path="/vendor/inbox" element={<VendorInbox />} />
-        <Route path="/vendor/reviews" element={<VendorReviews />} />
-        <Route path="/vendor/discounts" element={<VendorDiscounts />} />
-        <Route path="/vendor/discounts/create" element={<CreateDiscount />} />
-        <Route path="/vendor/help" element={<VendorHelp />} />
-        <Route path="/vendor/change-password" element={<VendorChangePassword />} />
-        <Route path="/vendor/store/:vendor_slug/:vendor_id" element={<VendorStore />} />
-
-      </Routes>
+          {/* Vendor Routes */}
+          <Route path="/vendor/register" element={<VendorRegister />} />
+          <Route path="/vendor/login" element={<VendorLogin />} />
+          <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+          <Route path="/vendor/products" element={<VendorProducts />} />
+          <Route path="/vendor/add-product" element={<AddProduct />} />
+          <Route path="/vendor/orders" element={<VendorOrders />} />
+          <Route path="/vendor/customers" element={<VendorCustomers />} />
+          <Route path="/vendor/reports" element={<VendorReports />} />
+          <Route path="/vendor/profile" element={<VendorProfile />} />
+          <Route path="/vendor/public-profile/:vendor_id" element={<VendorPublicProfile />} />
+          <Route path="/vendor/wallet" element={<VendorWallet />} />
+          <Route path="/vendor/payouts" element={<PayoutsHistory />} />
+          <Route path="/vendor/inbox" element={<VendorInbox />} />
+          <Route path="/vendor/reviews" element={<VendorReviews />} />
+          <Route path="/vendor/discounts" element={<VendorDiscounts />} />
+          <Route path="/vendor/discounts/create" element={<CreateDiscount />} />
+          <Route path="/vendor/help" element={<VendorHelp />} />
+          <Route path="/vendor/change-password" element={<VendorChangePassword />} />
+          <Route path="/vendor/store/:vendor_slug/:vendor_id" element={<VendorStore />} />
+        </Routes>
       </main>
       <Footer />
     </>
