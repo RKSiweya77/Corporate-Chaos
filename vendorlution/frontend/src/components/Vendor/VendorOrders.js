@@ -1,37 +1,49 @@
-import React from "react";
+//Packages
+import { motion } from "framer-motion";
+
+//Assets
+import logo from "../../logo.png";
 import VendorSidebar from "./VendorSidebar";
 
 function VendorOrders() {
-  // Mock orders (replace later with API call)
+  // Mock vendor orders (replace later with API call)
   const orders = [
-    {
-      id: 1,
-      customer: "John Doe",
-      product: "Second-Hand Laptop",
-      quantity: 1,
-      total: 4500,
-      status: "Pending",
-      date: "2025-09-10",
-    },
-    {
-      id: 2,
-      customer: "Jane Smith",
-      product: "Designer Jacket",
-      quantity: 2,
-      total: 2400,
-      status: "Shipped",
-      date: "2025-09-12",
-    },
-    {
-      id: 3,
-      customer: "Mike Johnson",
-      product: "Old iPhone",
-      quantity: 1,
-      total: 2500,
-      status: "Delivered",
-      date: "2025-09-15",
-    },
+    { id: 1, product: "Phone", image: logo, price: 500, status: "Paid" },
+    { id: 2, product: "Speaker", image: logo, price: 500, status: "Cancelled" },
+    { id: 3, product: "Earbuds", image: logo, price: 500, status: "Awaiting Buyer Confirmation" },
+    { id: 4, product: "Trouser", image: logo, price: 500, status: "Processing" },
   ];
+
+  const renderVendorStatus = (status) => {
+    switch (status) {
+      case "Paid":
+        return (
+          <span className="badge rounded-pill bg-success">
+            <i className="fa fa-check-circle me-1" /> Paid — Funds Released
+          </span>
+        );
+      case "Awaiting Buyer Confirmation":
+        return (
+          <span className="badge rounded-pill bg-warning text-dark">
+            <i className="fa fa-hourglass-half me-1" /> Awaiting Buyer Confirmation
+          </span>
+        );
+      case "Processing":
+        return (
+          <span className="badge rounded-pill bg-info text-dark">
+            <i className="fa fa-cogs me-1" /> Processing
+          </span>
+        );
+      case "Cancelled":
+        return (
+          <span className="badge rounded-pill bg-danger">
+            <i className="fa fa-times-circle me-1" /> Cancelled
+          </span>
+        );
+      default:
+        return <span className="badge rounded-pill bg-secondary">{status}</span>;
+    }
+  };
 
   return (
     <div className="container mt-3">
@@ -41,62 +53,46 @@ function VendorOrders() {
           <VendorSidebar />
         </div>
 
-        {/* Main Content */}
+        {/* Vendor Orders Content */}
         <div className="col-md-9 col-12 mb-2">
-          <h3 className="mb-3">My Orders</h3>
+          <h3 className="mb-4">Customer Orders</h3>
 
-          <div className="table-responsive">
-            <table className="table table-bordered align-middle">
-              <thead className="table-light">
-                <tr>
-                  <th>#</th>
-                  <th>Customer</th>
-                  <th>Product</th>
-                  <th>Quantity</th>
-                  <th>Total (R)</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.length > 0 ? (
-                  orders.map((order, index) => (
-                    <tr key={order.id}>
-                      <td>{index + 1}</td>
-                      <td>{order.customer}</td>
-                      <td>{order.product}</td>
-                      <td>{order.quantity}</td>
-                      <td>{order.total}</td>
-                      <td>
-                        {order.status === "Pending" && (
-                          <span className="badge bg-warning text-dark">
-                            Pending
-                          </span>
-                        )}
-                        {order.status === "Shipped" && (
-                          <span className="badge bg-info text-dark">
-                            Shipped
-                          </span>
-                        )}
-                        {order.status === "Delivered" && (
-                          <span className="badge bg-success">
-                            Delivered
-                          </span>
-                        )}
-                      </td>
-                      <td>{order.date}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="text-center">
-                      No orders yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          {orders.length > 0 ? (
+            <div className="row g-3">
+              {orders.map((order) => (
+                <motion.div
+                  key={order.id}
+                  className="col-12 col-md-6"
+                  whileHover={{ y: -4 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                >
+                  <div className="card shadow-sm border-0 h-100">
+                    <div className="card-body d-flex">
+                      <img
+                        src={order.image}
+                        alt={order.product}
+                        width="70"
+                        height="70"
+                        className="rounded me-3"
+                        style={{ objectFit: "cover" }}
+                      />
+                      <div className="flex-grow-1">
+                        <h6 className="fw-bold mb-1">{order.product}</h6>
+                        <p className="mb-1 text-muted small">Order ID: #{order.id}</p>
+                        <p className="mb-2 fw-semibold">R {order.price}</p>
+                        {renderVendorStatus(order.status)}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-muted">
+              <i className="fa fa-box-open fa-2x mb-2" />
+              <p>No customer orders found.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

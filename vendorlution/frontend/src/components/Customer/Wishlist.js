@@ -1,76 +1,69 @@
-import { useState } from "react";
 import Sidebar from "./Sidebar";
-import logo from "../../logo.svg"; // or your product image
+import logo from "../../logo.png";
+import { Link } from "react-router-dom";
 
 function Wishlist() {
-  // Example wishlist data (later you can fetch this from backend API)
-  const [wishlist, setWishlist] = useState([
-    { id: 1, name: "Phone", price: 500, image: logo },
-    { id: 2, name: "Speaker", price: 500, image: logo },
-    { id: 3, name: "Earphones", price: 500, image: logo },
-    { id: 4, name: "Trouser", price: 500, image: logo },
-  ]);
-
-  // Function to remove item
-  const removeItem = (id) => {
-    setWishlist(wishlist.filter((item) => item.id !== id));
-  };
+  const wishlist = [
+    {
+      id: 1,
+      title: "Smart Watch",
+      price: 1500,
+      vendor: "TechWorld Store",
+    },
+    {
+      id: 2,
+      title: "Sneakers",
+      price: 950,
+      vendor: "Fashion Hub",
+    },
+  ];
 
   return (
-    <div className="container mt-4">
+    <div className="container mt-3">
       <div className="row">
         {/* Sidebar */}
-        <aside className="col-md-3">
+        <div className="col-md-3 col-12 mb-2">
           <Sidebar />
-        </aside>
+        </div>
 
-        {/* Wishlist Table */}
-        <section className="col-md-9">
+        {/* Wishlist Content */}
+        <div className="col-md-9 col-12 mb-2">
           <h3 className="mb-3">My Wishlist</h3>
-          <table className="table table-bordered">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Product</th>
-                <th>Price</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {wishlist.length > 0 ? (
-                wishlist.map((item, index) => (
-                  <tr key={item.id}>
-                    <td>{index + 1}</td>
-                    <td>
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        width="40"
-                        className="me-2"
-                      />
-                      {item.name}
-                    </td>
-                    <td>R {item.price}</td>
-                    <td>
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={() => removeItem(item.id)}
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="4" className="text-center">
-                    No items in wishlist
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </section>
+
+          {wishlist.length > 0 ? (
+            <div className="row g-3">
+              {wishlist.map((item) => (
+                <div key={item.id} className="col-6 col-md-4 col-lg-3">
+                  <div className="card h-100 shadow-sm border-0">
+                    <img
+                      src={logo}
+                      alt={item.title}
+                      className="card-img-top"
+                      style={{ height: "160px", objectFit: "cover" }}
+                    />
+                    <div className="card-body text-center">
+                      <h6 className="fw-bold mb-1">{item.title}</h6>
+                      <p className="text-muted small">R {item.price}</p>
+                      <small className="text-muted d-block mb-2">
+                        {item.vendor}
+                      </small>
+                      <div className="d-flex gap-2 justify-content-center">
+                        <button className="btn btn-sm btn-dark">
+                          <i className="fa fa-cart-plus me-1"></i>Add to Cart
+                        </button>
+                        <button className="btn btn-sm btn-outline-danger">
+                          <i className="fa fa-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted">Your wishlist is empty.</p>
+          )}
+        </div>
       </div>
     </div>
   );
