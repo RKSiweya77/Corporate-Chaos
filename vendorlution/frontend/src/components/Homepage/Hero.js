@@ -5,11 +5,11 @@ import "./Hero.css";
 import SplitText from "./SplitText"; // ✅ Import SplitText
 
 function Hero() {
-  const [slides, setSlides] = useState([
+  const [slides] = useState([
     {
       id: 1,
       image: logo,
-      title: "🔥 Mega Electronics Sale",
+      title: "Mega Electronics Sale",
       text: "Up to 40% off on selected gadgets.",
       link: "/category/electronics/1",
       btnText: "Shop Now",
@@ -17,7 +17,7 @@ function Hero() {
     {
       id: 2,
       image: logo,
-      title: "👗 Fashion Clearance",
+      title: "Fashion Clearance",
       text: "Trendy styles at affordable prices.",
       link: "/category/fashion/2",
       btnText: "Explore",
@@ -25,19 +25,35 @@ function Hero() {
     {
       id: 3,
       image: logo,
-      title: "🏠 Home & Living",
+      title: "Home & Living",
       text: "Upgrade your space with modern furniture.",
       link: "/vendor/store/home-comforts/4",
       btnText: "Visit Store",
     },
   ]);
 
+  const [activeIndex, setActiveIndex] = useState(0);
+
   useEffect(() => {
-    // Later: fetch API data for slides
+    const carousel = document.getElementById("heroCarousel");
+
+    const handleSlide = (e) => {
+      setActiveIndex(e.to);
+    };
+
+    if (carousel) {
+      carousel.addEventListener("slid.bs.carousel", handleSlide);
+    }
+
+    return () => {
+      if (carousel) {
+        carousel.removeEventListener("slid.bs.carousel", handleSlide);
+      }
+    };
   }, []);
 
   const handleAnimationComplete = () => {
-    console.log("All letters have animated!");
+    console.log("Slide text animation complete!");
   };
 
   return (
@@ -45,6 +61,7 @@ function Hero() {
       id="heroCarousel"
       className="carousel slide mb-4"
       data-bs-ride="carousel"
+      data-bs-interval="5000" // ✅ Auto-slide every 5 sec
     >
       {/* Indicators */}
       <div className="carousel-indicators">
@@ -55,6 +72,7 @@ function Hero() {
             data-bs-target="#heroCarousel"
             data-bs-slide-to={i}
             className={i === 0 ? "active" : ""}
+            aria-current={i === activeIndex}
           ></button>
         ))}
       </div>
@@ -69,25 +87,25 @@ function Hero() {
             <img
               src={s.image}
               className="d-block w-100"
-              alt="hero slide"
+              alt={s.title}
               style={{ maxHeight: "400px", objectFit: "contain" }}
             />
             <div className="carousel-caption d-none d-md-block text-start">
-              {/* ✅ SplitText for animated title */}
-              <SplitText
-                text={s.title}
-                className="hero-title"
-                delay={100}
-                duration={0.6}
-                ease="power3.out"
-                splitType="chars"
-                from={{ opacity: 0, y: 40 }}
-                to={{ opacity: 1, y: 0 }}
-                threshold={0.1}
-                rootMargin="-100px"
-                textAlign="left"
-                onLetterAnimationComplete={handleAnimationComplete}
-              />
+              {i === activeIndex && (
+                <SplitText
+                  key={s.title + activeIndex}
+                  text={s.title}
+                  className="hero-title"
+                  delay={100}
+                  duration={0.6}
+                  ease="power3.out"
+                  splitType="chars"
+                  from={{ opacity: 0, y: 40 }}
+                  to={{ opacity: 1, y: 0 }}
+                  textAlign="left"
+                  onLetterAnimationComplete={handleAnimationComplete}
+                />
+              )}
               <p className="hero-text">{s.text}</p>
               <Link to={s.link} className="btn btn-primary btn-sm">
                 {s.btnText}
