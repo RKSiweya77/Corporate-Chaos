@@ -5,42 +5,11 @@ import { useState } from "react";
 
 function Header() {
   const nav = useNavigate();
-  const {
-    isAuthenticated,
-    roles,
-    activeRole,
-    hasRole,
-    addVendorRole,
-    switchRole,
-    logout,
-  } = useAuth();
+  const { isAuthenticated, hasRole, addVendorRole, logout } = useAuth();
 
   const [shopMenuOpen, setShopMenuOpen] = useState(false);
-
-  const buyerMenu = [
-    { to: "/customer/orders", label: "My Orders", icon: "fa-bag-shopping" },
-    { to: "/customer/wallet", label: "My Wallet", icon: "fa-wallet" },
-    { to: "/customer/wishlist", label: "Wishlist", icon: "fa-heart" },
-    { to: "/customer/inbox", label: "Messages", icon: "fa-comments" },
-    { to: "/customer/notifications", label: "Notifications", icon: "fa-bell" },
-    { to: "/customer/profile", label: "Profile", icon: "fa-user" },
-    { to: "/customer/settings", label: "Settings", icon: "fa-gear" },
-  ];
-
-  const shopMenu = [
-    { to: "/vendor/dashboard", label: "Dashboard", icon: "fa-chart-line" },
-    { to: "/vendor/orders", label: "Orders", icon: "fa-list-check" },
-    { to: "/vendor/products", label: "Linked Products", icon: "fa-box" },
-    { to: "/vendor/add-product", label: "Add Product", icon: "fa-circle-plus", sub: true },
-    { to: "/vendor/inbox", label: "Messages", icon: "fa-comments" },
-    { to: "/vendor/wallet", label: "Wallet", icon: "fa-sack-dollar" },
-    { to: "/vendor/payouts", label: "Payouts", icon: "fa-money-bill-transfer" },
-    { to: "/vendor/reports", label: "Reports", icon: "fa-chart-pie" },
-    { to: "/vendor/discounts", label: "Discounts", icon: "fa-tags" },
-    { to: "/vendor/reviews", label: "Reviews", icon: "fa-star" },
-    { to: "/vendor/profile", label: "Shop Profile", icon: "fa-store" },
-    { to: "/vendor/settings", label: "Settings", icon: "fa-gear" },
-  ];
+  const [walletMenuOpen, setWalletMenuOpen] = useState(false);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -56,7 +25,6 @@ function Header() {
           type="button"
           data-bs-toggle="offcanvas"
           data-bs-target="#mainNav"
-          aria-controls="mainNav"
         >
           <i className="fa fa-bars"></i>
         </button>
@@ -67,11 +35,22 @@ function Header() {
           <span className="fw-bold">Vendorlution</span>
         </Link>
 
-        {/* Right icons */}
-        <div className="d-flex align-items-center ms-auto gap-2">
-          <Link to="/explore-vendors" className="btn btn-sm btn-outline-dark">
-            <i className="fa fa-store me-1"></i> Vendors
-          </Link>
+        {/* Searchbar */}
+        <form className="d-none d-md-flex mx-auto" style={{ width: "40%" }}>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Search products, vendors..."
+          />
+        </form>
+
+        {/* Quick icons */}
+        <div className="d-flex align-items-center gap-2">
+          {hasRole("vendor") && (
+            <Link to="/vendor/profile" className="btn btn-sm btn-outline-dark">
+              <i className="fa fa-store me-1"></i> My Shop
+            </Link>
+          )}
           <Link to="/customer/wishlist" className="btn btn-sm btn-outline-dark">
             <i className="fa fa-heart"></i>
           </Link>
@@ -101,71 +80,135 @@ function Header() {
         </div>
       </div>
 
-      {/* Offcanvas */}
-      <div
-        className="offcanvas offcanvas-start"
-        tabIndex="-1"
-        id="mainNav"
-        aria-labelledby="mainNavLabel"
-      >
+      {/* Offcanvas menu */}
+      <div className="offcanvas offcanvas-start" id="mainNav">
         <div className="offcanvas-header">
           <h5 className="offcanvas-title">Navigation</h5>
           <button type="button" className="btn-close" data-bs-dismiss="offcanvas"></button>
         </div>
         <div className="offcanvas-body">
-          {/* Buyer section */}
-          {isAuthenticated && (
-            <>
-              <div className="fw-bold small text-muted mb-2">Buyer</div>
-              <div className="list-group mb-3">
-                {buyerMenu.map((i) => (
-                  <Link key={i.to} to={i.to} className="list-group-item list-group-item-action">
-                    <i className={`fa ${i.icon} me-2`}></i> {i.label}
-                  </Link>
-                ))}
-              </div>
-            </>
-          )}
 
-          {/* Vendor: My Shop */}
-          {hasRole("vendor") && (
-            <>
-              <div
-                className="fw-bold small text-muted mb-2 d-flex justify-content-between align-items-center"
-                onClick={() => setShopMenuOpen(!shopMenuOpen)}
-                style={{ cursor: "pointer" }}
-              >
-                <span>My Shop</span>
-                <i className={`fa fa-chevron-${shopMenuOpen ? "up" : "down"}`}></i>
-              </div>
-              {shopMenuOpen && (
-                <div className="list-group mb-3">
-                  {shopMenu.map((i) => (
-                    <Link key={i.to} to={i.to} className="list-group-item list-group-item-action">
-                      <i className={`fa ${i.icon} me-2`}></i> {i.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+          {/* Buyer */}
+          <div className="fw-bold small text-muted mb-2">Buyer</div>
+          <div className="list-group mb-3">
+            <Link to="/customer/orders" className="list-group-item list-group-item-action">
+              <i className="fa fa-bag-shopping me-2"></i> My Orders
+            </Link>
 
-          {/* Explore */}
-          <div className="fw-bold small text-muted mb-2">Explore</div>
-          <div className="list-group">
-            <Link to="/" className="list-group-item list-group-item-action">
-              <i className="fa fa-compass me-2"></i> Discover
+            {/* Wallet dropdown */}
+            <div
+              className="list-group-item d-flex justify-content-between align-items-center"
+              onClick={() => setWalletMenuOpen(!walletMenuOpen)}
+              style={{ cursor: "pointer" }}
+            >
+              <span><i className="fa fa-wallet me-2"></i> My Wallet</span>
+              <i className={`fa fa-chevron-${walletMenuOpen ? "up" : "down"}`}></i>
+            </div>
+            {walletMenuOpen && (
+              <div className="list-group ps-4">
+                <Link to="/customer/wallet" className="list-group-item list-group-item-action">
+                  Wallet Overview
+                </Link>
+                <Link to="/customer/wallet/deposit" className="list-group-item list-group-item-action">
+                  Deposit
+                </Link>
+                <Link to="/customer/wallet/withdraw" className="list-group-item list-group-item-action">
+                  Withdraw
+                </Link>
+                <Link to="/customer/payment-methods" className="list-group-item list-group-item-action">
+                  Payment Methods
+                </Link>
+              </div>
+            )}
+
+            <Link to="/customer/wishlist" className="list-group-item list-group-item-action">
+              <i className="fa fa-heart me-2"></i> Wishlist
             </Link>
-            <Link to="/explore-vendors" className="list-group-item list-group-item-action">
-              <i className="fa fa-store me-2"></i> Shops
-            </Link>
-            <Link to="/products" className="list-group-item list-group-item-action">
-              <i className="fa fa-grid-2 me-2"></i> All Products
-            </Link>
-            <Link to="/categories" className="list-group-item list-group-item-action">
-              <i className="fa fa-layer-group me-2"></i> Categories
+            <Link to="/customer/inbox" className="list-group-item list-group-item-action">
+              <i className="fa fa-comments me-2"></i> Messages
             </Link>
           </div>
+
+          {/* Vendor My Shop dropdown */}
+          <div
+            className="fw-bold small text-muted mb-2 d-flex justify-content-between align-items-center"
+            onClick={() => setShopMenuOpen(!shopMenuOpen)}
+            style={{ cursor: "pointer" }}
+          >
+            <span>My Shop</span>
+            <i className={`fa fa-chevron-${shopMenuOpen ? "up" : "down"}`}></i>
+          </div>
+          {shopMenuOpen && (
+            <div className="list-group mb-3">
+              {hasRole("vendor") ? (
+                <>
+                  <Link to="/vendor/profile" className="list-group-item list-group-item-action">
+                    <i className="fa fa-store me-2"></i> Shop Overview
+                  </Link>
+                  <Link to="/vendor/orders" className="list-group-item list-group-item-action">
+                    <i className="fa fa-list-check me-2"></i> Orders
+                  </Link>
+                  <Link to="/vendor/products" className="list-group-item list-group-item-action">
+                    <i className="fa fa-box me-2"></i> Linked Products
+                  </Link>
+                  <Link to="/vendor/add-product" className="list-group-item list-group-item-action">
+                    <i className="fa fa-circle-plus me-2"></i> Add Product
+                  </Link>
+                  <Link to="/vendor/inbox" className="list-group-item list-group-item-action">
+                    <i className="fa fa-comments me-2"></i> Messages
+                  </Link>
+                  <Link to="/vendor/wallet" className="list-group-item list-group-item-action">
+                    <i className="fa fa-sack-dollar me-2"></i> Wallet
+                  </Link>
+                  <Link to="/vendor/payouts" className="list-group-item list-group-item-action">
+                    <i className="fa fa-money-bill-transfer me-2"></i> Payouts
+                  </Link>
+                  <Link to="/vendor/reports" className="list-group-item list-group-item-action">
+                    <i className="fa fa-chart-line me-2"></i> Reports
+                  </Link>
+                  <Link to="/vendor/discounts" className="list-group-item list-group-item-action">
+                    <i className="fa fa-tags me-2"></i> Discounts
+                  </Link>
+                  <Link to="/vendor/reviews" className="list-group-item list-group-item-action">
+                    <i className="fa fa-star me-2"></i> Reviews
+                  </Link>
+                </>
+              ) : (
+                <button
+                  onClick={addVendorRole}
+                  className="list-group-item list-group-item-action text-start"
+                >
+                  <i className="fa fa-circle-plus me-2"></i> Create Shop
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Settings */}
+          <div
+            className="fw-bold small text-muted mb-2 d-flex justify-content-between align-items-center"
+            onClick={() => setSettingsMenuOpen(!settingsMenuOpen)}
+            style={{ cursor: "pointer" }}
+          >
+            <span>Settings</span>
+            <i className={`fa fa-chevron-${settingsMenuOpen ? "up" : "down"}`}></i>
+          </div>
+          {settingsMenuOpen && (
+            <div className="list-group mb-3">
+              <Link to="/customer/profile" className="list-group-item list-group-item-action">
+                <i className="fa fa-user me-2"></i> Update Profile
+              </Link>
+              <Link to="/customer/change-password" className="list-group-item list-group-item-action">
+                <i className="fa fa-key me-2"></i> Change Password
+              </Link>
+              <div className="list-group-item d-flex align-items-center">
+                <i className="fa fa-moon me-2"></i> Dark Mode
+                <div className="form-check form-switch ms-auto">
+                  <input className="form-check-input" type="checkbox" />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </nav>
