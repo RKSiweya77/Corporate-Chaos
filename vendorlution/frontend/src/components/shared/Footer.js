@@ -9,8 +9,8 @@ function Footer() {
           <div className="col-md-4">
             <h5 className="fw-bold">Vendorlution</h5>
             <p className="small text-muted">
-              A modern marketplace with escrow wallets and trusted vendor buyer
-              interactions.
+              <div className="text-decoration-none text-light">A modern marketplace with escrow wallets and trusted vendor buyer
+              interactions.</div> 
             </p>
           </div>
 
@@ -55,7 +55,7 @@ function Footer() {
 
         <hr className="border-secondary mt-4" />
         <p className="text-center small text-muted mb-0 py-3">
-          © {new Date().getFullYear()} Vendorlution. All rights reserved.
+          <div className="text-decoration-none text-light">© {new Date().getFullYear()} Vendorlution. All rights reserved.</div> 
         </p>
       </div>
     </footer>
