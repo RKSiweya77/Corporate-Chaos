@@ -1,143 +1,56 @@
-import React, { useState } from "react";
+// components/Customer/CustomerWallet.js
+import React from "react";
 import { Link } from "react-router-dom";
-import Sidebar from "./Sidebar";
 
 function CustomerWallet() {
-  // Mock wallet data (replace later with backend)
-  const [wallet] = useState({
-    balance: 2000,
-    transactions: [
-      {
-        id: 1,
-        type: "Deposit",
-        amount: 1500,
-        date: "2025-09-10",
-        status: "Completed",
-      },
-      {
-        id: 2,
-        type: "Purchase",
-        amount: -500,
-        date: "2025-09-12",
-        status: "Completed",
-      },
-      {
-        id: 3,
-        type: "Refund",
-        amount: 300,
-        date: "2025-09-15",
-        status: "Completed",
-      },
-      {
-        id: 4,
-        type: "Withdrawal",
-        amount: -200,
-        date: "2025-09-16",
-        status: "Pending",
-      },
-    ],
-  });
-
-  const handleWithdraw = () => {
-    alert("Withdrawal request submitted (mock). Later this will connect to backend.");
-  };
-
-  const renderStatus = (status) => {
-    switch (status) {
-      case "Completed":
-        return <span className="badge bg-success">{status}</span>;
-      case "Pending":
-        return <span className="badge bg-warning text-dark">{status}</span>;
-      case "Failed":
-        return <span className="badge bg-danger">{status}</span>;
-      default:
-        return <span className="badge bg-secondary">{status}</span>;
-    }
-  };
+  const balance = 1500;
+  const history = [
+    { id: 1, type: "Deposit", amount: 1000, date: "2025-09-01" },
+    { id: 2, type: "Purchase", amount: -500, date: "2025-09-05" },
+    { id: 3, type: "Refund", amount: 200, date: "2025-09-10" },
+  ];
 
   return (
-    <div className="container mt-3">
-      <div className="row">
-        {/* Sidebar */}
-        <div className="col-md-3 col-12 mb-2">
-          <Sidebar />
-        </div>
-
-        {/* Main Content */}
-        <div className="col-md-9 col-12 mb-2">
-          <h3 className="mb-3">My Wallet</h3>
-
-          {/* Wallet Summary */}
-          <div className="row mb-4">
-            <div className="col-md-6 col-12 mb-3">
-              <div className="card text-center">
-                <div className="card-body">
-                  <h6 className="card-title">Available Balance</h6>
-                  <p className="fs-3 fw-bold text-success">R {wallet.balance}</p>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-6 col-12 mb-3 d-flex flex-column justify-content-center">
-              <Link to="/customer/payment-methods" className="btn btn-primary mb-2">
-                <i className="fa fa-plus-circle me-2"></i> Deposit Funds
-              </Link>
-              <button className="btn btn-outline-danger" onClick={handleWithdraw}>
-                <i className="fa fa-money me-2"></i> Withdraw Funds
-              </button>
-            </div>
+    <div className="container py-4">
+      <h3 className="mb-4">My Wallet</h3>
+      <div className="card shadow-sm border-0 mb-4">
+        <div className="card-body text-center">
+          <h5 className="fw-bold">Available Balance</h5>
+          <h3 className="text-success">R {balance}</h3>
+          <div className="d-flex justify-content-center gap-2 mt-3">
+            <Link to="/customer/payment-methods" className="btn btn-dark">
+              Deposit
+            </Link>
+            <button className="btn btn-outline-dark">Withdraw</button>
           </div>
-
-          {/* Transaction History */}
-          <div className="card">
-            <div className="card-body">
-              <h5 className="card-title">Transaction History</h5>
-              <div className="table-responsive">
-                <table className="table table-bordered align-middle">
-                  <thead className="table-light">
-                    <tr>
-                      <th>#</th>
-                      <th>Type</th>
-                      <th>Amount (R)</th>
-                      <th>Date</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {wallet.transactions.length > 0 ? (
-                      wallet.transactions.map((t, index) => (
-                        <tr key={t.id}>
-                          <td>{index + 1}</td>
-                          <td>{t.type}</td>
-                          <td
-                            className={
-                              t.amount < 0 ? "text-danger fw-bold" : "text-success fw-bold"
-                            }
-                          >
-                            {t.amount < 0 ? `- R ${Math.abs(t.amount)}` : `R ${t.amount}`}
-                          </td>
-                          <td>{t.date}</td>
-                          <td>{renderStatus(t.status)}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="5" className="text-center">
-                          No transactions found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <p className="text-muted small mt-2">
-            <i className="fa fa-info-circle me-1"></i>
-            Payments go into your Vendorlution Wallet. When you purchase, funds
-            move to the seller’s wallet and are released after order confirmation.
-          </p>
         </div>
+      </div>
+
+      <h5 className="mb-3">Transaction History</h5>
+      <div className="list-group shadow-sm">
+        {history.map((h) => (
+          <div
+            key={h.id}
+            className="list-group-item d-flex justify-content-between align-items-center"
+          >
+            <span>
+              <i
+                className={`fa me-2 ${
+                  h.type === "Deposit"
+                    ? "fa-arrow-down text-success"
+                    : h.type === "Purchase"
+                    ? "fa-arrow-up text-danger"
+                    : "fa-undo text-info"
+                }`}
+              ></i>
+              {h.type}
+            </span>
+            <span className={h.amount > 0 ? "text-success" : "text-danger"}>
+              {h.amount > 0 ? "+" : "-"}R {Math.abs(h.amount)}
+            </span>
+            <small className="text-muted">{h.date}</small>
+          </div>
+        ))}
       </div>
     </div>
   );

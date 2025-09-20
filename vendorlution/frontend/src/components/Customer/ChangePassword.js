@@ -1,73 +1,67 @@
-import { useState } from "react";
-import Sidebar from "./Sidebar";
+// components/Customer/ChangePassword.js
+import React, { useState } from "react";
 
 function ChangePassword() {
-  const [passwords, setPasswords] = useState({
-    newPassword: "",
-    confirmPassword: "",
+  const [formData, setFormData] = useState({
+    current: "",
+    new: "",
+    confirm: "",
   });
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setPasswords({ ...passwords, [name]: value });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (passwords.newPassword !== passwords.confirmPassword) {
+    if (formData.new !== formData.confirm) {
       alert("Passwords do not match!");
       return;
     }
-
-    console.log("Password updated:", passwords.newPassword);
-    alert("Password updated successfully!");
-    // 🔗 Later: Send request to Django API for password change
+    alert("Password changed successfully (mock).");
   };
 
   return (
-    <div className="container mt-4">
-      <div className="row">
-        {/* Sidebar */}
-        <aside className="col-md-3">
-          <Sidebar />
-        </aside>
-
-        {/* Change Password Form */}
-        <section className="col-md-9">
-          <h3 className="mb-3">Change Password</h3>
-          <form onSubmit={handleSubmit}>
-            <div className="mb-3">
-              <label className="form-label">New Password</label>
-              <input
-                type="password"
-                name="newPassword"
-                value={passwords.newPassword}
-                onChange={handleChange}
-                className="form-control"
-                placeholder="Enter new password"
-                required
-              />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label">Confirm Password</label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={passwords.confirmPassword}
-                onChange={handleChange}
-                className="form-control"
-                placeholder="Confirm new password"
-                required
-              />
-            </div>
-
-            <button type="submit" className="btn btn-primary">
-              Submit
-            </button>
-          </form>
-        </section>
-      </div>
+    <div className="container py-4">
+      <h3 className="mb-4">Change Password</h3>
+      <form onSubmit={handleSubmit} className="card shadow-sm p-4">
+        <div className="mb-3">
+          <label className="form-label">Current Password</label>
+          <input
+            type="password"
+            name="current"
+            className="form-control"
+            value={formData.current}
+            onChange={handleChange}
+            required
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">New Password</label>
+          <input
+            type="password"
+            name="new"
+            className="form-control"
+            value={formData.new}
+            onChange={handleChange}
+            required
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">Confirm New Password</label>
+          <input
+            type="password"
+            name="confirm"
+            className="form-control"
+            value={formData.confirm}
+            onChange={handleChange}
+            required
+          />
+        </div>
+        <button type="submit" className="btn btn-dark w-100">
+          Update Password
+        </button>
+      </form>
     </div>
   );
 }
