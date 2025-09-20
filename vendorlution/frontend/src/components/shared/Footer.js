@@ -9,7 +9,7 @@ function Footer() {
           <div className="col-md-4">
             <h5 className="fw-bold">Vendorlution</h5>
             <p className="small text-muted">
-              A modern marketplace with escrow wallets and trusted vendor–buyer
+              A modern marketplace with escrow wallets and trusted vendor buyer
               interactions.
             </p>
           </div>
