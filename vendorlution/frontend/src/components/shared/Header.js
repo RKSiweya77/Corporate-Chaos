@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import logo from "../../logo.png";
+import { useState } from "react";
 
 function Header() {
   const nav = useNavigate();
@@ -14,52 +15,32 @@ function Header() {
     logout,
   } = useAuth();
 
+  const [shopMenuOpen, setShopMenuOpen] = useState(false);
+
   const buyerMenu = [
-    { to: "/customer/dashboard", label: "Dashboard", icon: "fa-gauge" },
-    { to: "/customer/orders", label: "Orders", icon: "fa-bag-shopping" },
-    { to: "/cart", label: "Cart", icon: "fa-cart-shopping" },
+    { to: "/customer/orders", label: "My Orders", icon: "fa-bag-shopping" },
+    { to: "/customer/wallet", label: "My Wallet", icon: "fa-wallet" },
     { to: "/customer/wishlist", label: "Wishlist", icon: "fa-heart" },
     { to: "/customer/inbox", label: "Messages", icon: "fa-comments" },
     { to: "/customer/notifications", label: "Notifications", icon: "fa-bell" },
-    { to: "/customer/wallet", label: "Wallet", icon: "fa-wallet" },
-    { to: "/customer/coupons", label: "Coupons", icon: "fa-ticket" },
     { to: "/customer/profile", label: "Profile", icon: "fa-user" },
-    { to: "/customer/addresses", label: "Addresses", icon: "fa-location-dot" },
-    { to: "/customer/payment-methods", label: "Payment Methods", icon: "fa-credit-card" },
-    { to: "/customer/support", label: "Support", icon: "fa-life-ring" },
-    { to: "/customer/change-password", label: "Change Password", icon: "fa-key" },
-    { to: "/customer/resolution-center", label: "Resolution Center", icon: "fa-scale-balanced" },
+    { to: "/customer/settings", label: "Settings", icon: "fa-gear" },
   ];
 
-  const vendorMenu = [
-    { to: "/vendor/dashboard", label: "Vendor Dashboard", icon: "fa-chart-line" },
-    { to: "/vendor/products", label: "Products", icon: "fa-box" },
-    { to: "/vendor/add-product", label: "Add Product", icon: "fa-circle-plus" },
+  const shopMenu = [
+    { to: "/vendor/dashboard", label: "Dashboard", icon: "fa-chart-line" },
     { to: "/vendor/orders", label: "Orders", icon: "fa-list-check" },
-    { to: "/vendor/customers", label: "Customers", icon: "fa-users" },
-    { to: "/vendor/inbox", label: "Inbox", icon: "fa-comments" },
-    { to: "/vendor/wallet", label: "Wallet", icon: "fa-wallet" },
-    { to: "/vendor/payouts", label: "Payouts", icon: "fa-sack-dollar" },
+    { to: "/vendor/products", label: "Linked Products", icon: "fa-box" },
+    { to: "/vendor/add-product", label: "Add Product", icon: "fa-circle-plus", sub: true },
+    { to: "/vendor/inbox", label: "Messages", icon: "fa-comments" },
+    { to: "/vendor/wallet", label: "Wallet", icon: "fa-sack-dollar" },
+    { to: "/vendor/payouts", label: "Payouts", icon: "fa-money-bill-transfer" },
+    { to: "/vendor/reports", label: "Reports", icon: "fa-chart-pie" },
     { to: "/vendor/discounts", label: "Discounts", icon: "fa-tags" },
     { to: "/vendor/reviews", label: "Reviews", icon: "fa-star" },
-    { to: "/vendor/reports", label: "Reports", icon: "fa-chart-column" },
-    { to: "/vendor/profile", label: "Profile", icon: "fa-user-gear" },
-    { to: "/vendor/help", label: "Help", icon: "fa-circle-question" },
-    { to: "/vendor/change-password", label: "Change Password", icon: "fa-key" },
+    { to: "/vendor/profile", label: "Shop Profile", icon: "fa-store" },
+    { to: "/vendor/settings", label: "Settings", icon: "fa-gear" },
   ];
-
-  const renderMenuGroup = (title, items) => (
-    <>
-      <div className="fw-bold text-uppercase small text-muted mb-2">{title}</div>
-      <div className="list-group mb-3">
-        {items.map((i) => (
-          <Link key={i.to} to={i.to} className="list-group-item list-group-item-action">
-            <i className={`fa ${i.icon} me-2`}></i> {i.label}
-          </Link>
-        ))}
-      </div>
-    </>
-  );
 
   const handleLogout = () => {
     logout();
@@ -68,7 +49,7 @@ function Header() {
 
   return (
     <nav className="navbar navbar-light bg-white border-bottom sticky-top">
-      <div className="container d-flex align-items-center">
+      <div className="container">
         {/* Hamburger */}
         <button
           className="btn btn-outline-dark me-2"
@@ -81,21 +62,12 @@ function Header() {
         </button>
 
         {/* Brand */}
-        <Link to="/" className="navbar-brand d-flex align-items-center me-3">
+        <Link to="/" className="navbar-brand d-flex align-items-center">
           <img src={logo} alt="Vendorlution" height="28" className="me-2" />
           <span className="fw-bold">Vendorlution</span>
         </Link>
 
-        {/* Searchbar (centered, hidden on mobile) */}
-        <form className="d-none d-md-flex flex-grow-1 mx-3">
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Search for products, vendors..."
-          />
-        </form>
-
-        {/* Right icons (quick links) */}
+        {/* Right icons */}
         <div className="d-flex align-items-center ms-auto gap-2">
           <Link to="/explore-vendors" className="btn btn-sm btn-outline-dark">
             <i className="fa fa-store me-1"></i> Vendors
@@ -114,16 +86,22 @@ function Header() {
           </Link>
           {!isAuthenticated ? (
             <>
-              <Link to="/customer/login" className="btn btn-sm btn-dark">Sign in</Link>
-              <Link to="/customer/register" className="btn btn-sm btn-outline-dark">Register</Link>
+              <Link to="/customer/login" className="btn btn-sm btn-dark">
+                Sign in
+              </Link>
+              <Link to="/customer/register" className="btn btn-sm btn-outline-dark">
+                Register
+              </Link>
             </>
           ) : (
-            <button onClick={handleLogout} className="btn btn-sm btn-outline-danger">Logout</button>
+            <button onClick={handleLogout} className="btn btn-sm btn-outline-danger">
+              Logout
+            </button>
           )}
         </div>
       </div>
 
-      {/* Offcanvas: main navigation & role switching */}
+      {/* Offcanvas */}
       <div
         className="offcanvas offcanvas-start"
         tabIndex="-1"
@@ -131,59 +109,63 @@ function Header() {
         aria-labelledby="mainNavLabel"
       >
         <div className="offcanvas-header">
-          <h5 className="offcanvas-title" id="mainNavLabel">
-            Navigation
-          </h5>
-          <button type="button" className="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+          <h5 className="offcanvas-title">Navigation</h5>
+          <button type="button" className="btn-close" data-bs-dismiss="offcanvas"></button>
         </div>
-
         <div className="offcanvas-body">
-          {/* Role Switcher */}
+          {/* Buyer section */}
           {isAuthenticated && (
-            <div className="mb-3">
-              <div className="d-flex align-items-center justify-content-between">
-                <div>
-                  <div className="small text-muted">Active role</div>
-                  <div className="fw-semibold text-capitalize">{activeRole}</div>
-                </div>
-                <div className="btn-group">
-                  <button
-                    className={`btn btn-sm ${activeRole === "buyer" ? "btn-dark" : "btn-outline-dark"}`}
-                    onClick={() => switchRole("buyer")}
-                  >
-                    Buyer
-                  </button>
-                  {hasRole("vendor") ? (
-                    <button
-                      className={`btn btn-sm ${activeRole === "vendor" ? "btn-dark" : "btn-outline-dark"}`}
-                      onClick={() => switchRole("vendor")}
-                    >
-                      Seller
-                    </button>
-                  ) : (
-                    <button className="btn btn-sm btn-outline-dark" onClick={addVendorRole}>
-                      Start Selling
-                    </button>
-                  )}
-                </div>
+            <>
+              <div className="fw-bold small text-muted mb-2">Buyer</div>
+              <div className="list-group mb-3">
+                {buyerMenu.map((i) => (
+                  <Link key={i.to} to={i.to} className="list-group-item list-group-item-action">
+                    <i className={`fa ${i.icon} me-2`}></i> {i.label}
+                  </Link>
+                ))}
               </div>
-              <hr />
-            </div>
+            </>
           )}
 
-          {/* Buyer section */}
-          {hasRole("buyer") && renderMenuGroup("Buyer", buyerMenu)}
+          {/* Vendor: My Shop */}
+          {hasRole("vendor") && (
+            <>
+              <div
+                className="fw-bold small text-muted mb-2 d-flex justify-content-between align-items-center"
+                onClick={() => setShopMenuOpen(!shopMenuOpen)}
+                style={{ cursor: "pointer" }}
+              >
+                <span>My Shop</span>
+                <i className={`fa fa-chevron-${shopMenuOpen ? "up" : "down"}`}></i>
+              </div>
+              {shopMenuOpen && (
+                <div className="list-group mb-3">
+                  {shopMenu.map((i) => (
+                    <Link key={i.to} to={i.to} className="list-group-item list-group-item-action">
+                      <i className={`fa ${i.icon} me-2`}></i> {i.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
 
-          {/* Vendor section */}
-          {hasRole("vendor") && renderMenuGroup("Seller", vendorMenu)}
-
-          {/* Explore section */}
-          {renderMenuGroup("Explore", [
-            { to: "/", label: "Discover", icon: "fa-compass" },
-            { to: "/explore-vendors", label: "Shops", icon: "fa-store" },
-            { to: "/products", label: "All Products", icon: "fa-grid-2" },
-            { to: "/categories", label: "Categories", icon: "fa-layer-group" },
-          ])}
+          {/* Explore */}
+          <div className="fw-bold small text-muted mb-2">Explore</div>
+          <div className="list-group">
+            <Link to="/" className="list-group-item list-group-item-action">
+              <i className="fa fa-compass me-2"></i> Discover
+            </Link>
+            <Link to="/explore-vendors" className="list-group-item list-group-item-action">
+              <i className="fa fa-store me-2"></i> Shops
+            </Link>
+            <Link to="/products" className="list-group-item list-group-item-action">
+              <i className="fa fa-grid-2 me-2"></i> All Products
+            </Link>
+            <Link to="/categories" className="list-group-item list-group-item-action">
+              <i className="fa fa-layer-group me-2"></i> Categories
+            </Link>
+          </div>
         </div>
       </div>
     </nav>
