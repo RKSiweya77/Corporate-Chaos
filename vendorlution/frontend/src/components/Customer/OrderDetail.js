@@ -1,112 +1,95 @@
+// components/Customer/OrderDetail.js
+import React from "react";
 import { useParams, Link } from "react-router-dom";
-import logo from "../../logo.png";
-import Sidebar from "./Sidebar";
 
 function OrderDetail() {
   const { id } = useParams();
 
-  // Mock order (replace with API call later)
+  // Mock data (replace with API later)
   const order = {
     id,
-    product: "Phone",
-    image: logo,
-    price: 500,
-    status: "Completed",
-    delivery: "Pargo Store-to-Store",
-    tracking: "TRK123456789",
-    payment: "Vendorlution Wallet",
-    date: "2025-09-15",
+    product: "Wireless Headphones",
+    image: "/logo.png",
+    vendor: "TechWorld Store",
+    price: 1200,
+    qty: 1,
+    status: "Awaiting Confirmation", // Completed | Processing | Cancelled | Awaiting Confirmation
+    date: "2025-09-20",
+    shipping: "Pargo Store-to-Store",
+    address: "123 Main Street, Cape Town",
+    buyerProtection: true,
   };
 
   const renderStatus = (status) => {
     switch (status) {
       case "Completed":
-        return (
-          <span className="badge rounded-pill bg-success">
-            <i className="fa fa-check-circle me-1"></i> {status}
-          </span>
-        );
+        return <span className="badge bg-success"><i className="fa fa-check-circle me-1"></i>{status}</span>;
       case "Cancelled":
-        return (
-          <span className="badge rounded-pill bg-danger">
-            <i className="fa fa-times-circle me-1"></i> {status}
-          </span>
-        );
+        return <span className="badge bg-danger"><i className="fa fa-times-circle me-1"></i>{status}</span>;
       case "Processing":
-        return (
-          <span className="badge rounded-pill bg-warning text-dark">
-            <i className="fa fa-spinner fa-spin me-1"></i> {status}
-          </span>
-        );
+        return <span className="badge bg-warning text-dark"><i className="fa fa-spinner fa-spin me-1"></i>{status}</span>;
+      case "Awaiting Confirmation":
+        return <span className="badge bg-info text-dark"><i className="fa fa-clock me-1"></i>{status}</span>;
       default:
-        return (
-          <span className="badge rounded-pill bg-secondary">{status}</span>
-        );
+        return <span className="badge bg-secondary">{status}</span>;
     }
   };
 
   return (
-    <div className="container mt-3">
-      <div className="row">
-        {/* Sidebar */}
-        <div className="col-md-3 col-12 mb-2">
-          <Sidebar />
-        </div>
+    <div className="container py-5">
+      <Link to="/customer/orders" className="btn btn-sm btn-outline-dark mb-3">
+        <i className="fa fa-arrow-left me-1"></i> Back to Orders
+      </Link>
 
-        {/* Main Content */}
-        <div className="col-md-9 col-12 mb-2">
-          <h3 className="mb-3">Order Details</h3>
+      <div className="card shadow-sm border-0">
+        <div className="row g-0">
+          {/* Product image */}
+          <div className="col-md-4">
+            <img
+              src={order.image}
+              alt={order.product}
+              className="img-fluid h-100 w-100"
+              style={{ objectFit: "cover" }}
+            />
+          </div>
 
-          <div className="card shadow-sm border-0 mb-3">
-            <div className="card-body d-flex">
-              <img
-                src={order.image}
-                alt={order.product}
-                width="100"
-                height="100"
-                className="rounded me-3"
-                style={{ objectFit: "cover" }}
-              />
-              <div>
-                <h5 className="fw-bold">{order.product}</h5>
-                <p className="mb-1">Order ID: #{order.id}</p>
-                <p className="fw-semibold">R {order.price}</p>
-                {renderStatus(order.status)}
+          {/* Order details */}
+          <div className="col-md-8">
+            <div className="card-body">
+              <h4 className="fw-bold">{order.product}</h4>
+              <p className="text-muted mb-1">Order ID: #{order.id}</p>
+              <p className="text-muted mb-1">Vendor: {order.vendor}</p>
+              <p className="fw-semibold">R {order.price} × {order.qty} = R {order.price * order.qty}</p>
+              <div className="mb-3">{renderStatus(order.status)}</div>
+
+              <hr />
+
+              <h6 className="fw-bold">Shipping Info</h6>
+              <p className="mb-1"><i className="fa fa-truck me-2 text-muted"></i>{order.shipping}</p>
+              <p className="mb-3"><i className="fa fa-location-dot me-2 text-muted"></i>{order.address}</p>
+
+              <h6 className="fw-bold">Order Date</h6>
+              <p className="mb-3">{order.date}</p>
+
+              {order.buyerProtection && (
+                <div className="alert alert-info small">
+                  <i className="fa fa-shield-halved me-2"></i>
+                  This order is covered by Buyer Protection. Funds are held safely until you confirm receipt.
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="d-flex gap-2 mt-3">
+                {order.status === "Awaiting Confirmation" && (
+                  <button className="btn btn-success">
+                    <i className="fa fa-check me-1"></i> Confirm Receipt
+                  </button>
+                )}
+                <button className="btn btn-outline-danger">
+                  <i className="fa fa-life-ring me-1"></i> Open Dispute
+                </button>
               </div>
             </div>
-          </div>
-
-          <div className="card shadow-sm border-0 mb-3">
-            <div className="card-body">
-              <h5 className="fw-bold mb-2">
-                <i className="fa fa-truck me-2"></i> Delivery Information
-              </h5>
-              <p className="mb-1">Method: {order.delivery}</p>
-              <p className="mb-1">Tracking No: {order.tracking}</p>
-              <p className="text-muted small">
-                Estimated delivery within 3–5 business days.
-              </p>
-            </div>
-          </div>
-
-          <div className="card shadow-sm border-0 mb-3">
-            <div className="card-body">
-              <h5 className="fw-bold mb-2">
-                <i className="fa fa-credit-card me-2"></i> Payment Information
-              </h5>
-              <p className="mb-1">Payment Method: {order.payment}</p>
-              <p className="mb-1">Buyer Protection Applied</p>
-              <p className="text-muted small">
-                Payment was securely held and released after confirmation of
-                delivery.
-              </p>
-            </div>
-          </div>
-
-          <div className="text-end">
-            <Link to="/customer/orders" className="btn btn-outline-dark">
-              <i className="fa fa-arrow-left me-1"></i> Back to Orders
-            </Link>
           </div>
         </div>
       </div>
