@@ -1,13 +1,12 @@
+// components/Vendor/CreateDiscount.js
 import React, { useState } from "react";
-import VendorSidebar from "./VendorSidebar";
 
 function CreateDiscount() {
   const [form, setForm] = useState({
     code: "",
-    type: "Percentage",
-    amount: "",
+    percentage: "",
+    description: "",
     validUntil: "",
-    status: "Active",
   });
 
   const handleChange = (e) => {
@@ -17,96 +16,62 @@ function CreateDiscount() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    alert(`Discount created (mock): ${JSON.stringify(form, null, 2)}`);
-    // Later: send to backend with axios.post("/api/discounts/", form)
+    alert("Discount created (mock). API integration later.");
   };
 
   return (
-    <div className="container mt-3">
-      <div className="row">
-        {/* Sidebar */}
-        <div className="col-md-3 col-12 mb-2">
-          <VendorSidebar />
-        </div>
-
-        {/* Main Content */}
-        <div className="col-md-9 col-12 mb-2">
-          <h3 className="mb-3">Create New Discount</h3>
-
-          <div className="card">
-            <div className="card-body">
-              <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                  <label className="form-label">Discount Code</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    name="code"
-                    value={form.code}
-                    onChange={handleChange}
-                    placeholder="e.g. WELCOME10"
-                    required
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label">Type</label>
-                  <select
-                    className="form-select"
-                    name="type"
-                    value={form.type}
-                    onChange={handleChange}
-                  >
-                    <option value="Percentage">Percentage</option>
-                    <option value="Fixed">Fixed Amount</option>
-                    <option value="Shipping">Free Shipping</option>
-                  </select>
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label">Amount</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    name="amount"
-                    value={form.amount}
-                    onChange={handleChange}
-                    placeholder="10% or R100"
-                    required
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label">Valid Until</label>
-                  <input
-                    type="date"
-                    className="form-control"
-                    name="validUntil"
-                    value={form.validUntil}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label">Status</label>
-                  <select
-                    className="form-select"
-                    name="status"
-                    value={form.status}
-                    onChange={handleChange}
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
-
-                <button type="submit" className="btn btn-success">
-                  <i className="fa fa-save me-2"></i> Save Discount
-                </button>
-              </form>
+    <div className="container py-5">
+      <div className="card shadow-sm border-0">
+        <div className="card-body">
+          <h3 className="mb-4">Create Discount</h3>
+          <form onSubmit={handleSubmit}>
+            <div className="mb-3">
+              <label className="form-label">Discount Code</label>
+              <input
+                type="text"
+                className="form-control"
+                name="code"
+                value={form.code}
+                onChange={handleChange}
+                placeholder="E.g. SUMMER20"
+              />
             </div>
-          </div>
+            <div className="mb-3">
+              <label className="form-label">Percentage (%)</label>
+              <input
+                type="number"
+                className="form-control"
+                name="percentage"
+                value={form.percentage}
+                onChange={handleChange}
+                placeholder="E.g. 20"
+              />
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Description</label>
+              <textarea
+                className="form-control"
+                rows="3"
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+                placeholder="Short description"
+              />
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Valid Until</label>
+              <input
+                type="date"
+                className="form-control"
+                name="validUntil"
+                value={form.validUntil}
+                onChange={handleChange}
+              />
+            </div>
+            <button type="submit" className="btn btn-dark w-100">
+              <i className="fa fa-plus me-2"></i>Create Discount
+            </button>
+          </form>
         </div>
       </div>
     </div>

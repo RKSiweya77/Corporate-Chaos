@@ -1,78 +1,32 @@
-import React, { useState } from "react";
-import VendorSidebar from "./VendorSidebar";
+// components/Vendor/VendorReviews.js
+import React from "react";
 
 function VendorReviews() {
-  // Mock reviews (replace with API later)
-  const [reviews] = useState([
-    {
-      id: 1,
-      customer: "Jane Smith",
-      rating: 5,
-      comment: "Great laptop, works perfectly. Seller was very responsive!",
-      date: "2025-09-15",
-    },
-    {
-      id: 2,
-      customer: "Mike Johnson",
-      rating: 4,
-      comment: "Jacket is stylish and fits well. Delivery took a bit longer.",
-      date: "2025-09-14",
-    },
-    {
-      id: 3,
-      customer: "Anele N.",
-      rating: 3,
-      comment: "Phone works but battery drains fast. Seller did mention it.",
-      date: "2025-09-12",
-    },
-  ]);
-
-  // Helper to render stars
-  const renderStars = (rating) => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <i
-          key={i}
-          className={`fa fa-star${i <= rating ? " text-warning" : " text-muted"}`}
-        />
-      );
-    }
-    return stars;
-  };
+  const reviews = [
+    { id: 1, customer: "Alice", rating: 5, comment: "Great quality!" },
+    { id: 2, customer: "Bob", rating: 4, comment: "Fast delivery." },
+  ];
 
   return (
-    <div className="container mt-3">
-      <div className="row">
-        {/* Sidebar */}
-        <div className="col-md-3 col-12 mb-2">
-          <VendorSidebar />
-        </div>
-
-        {/* Main Content */}
-        <div className="col-md-9 col-12 mb-2">
-          <h3 className="mb-3">Customer Reviews</h3>
-
-          {reviews.length > 0 ? (
-            <div className="list-group">
-              {reviews.map((review) => (
-                <div
-                  key={review.id}
-                  className="list-group-item list-group-item-action mb-2 rounded"
-                >
-                  <div className="d-flex justify-content-between">
-                    <strong>{review.customer}</strong>
-                    <small className="text-muted">{review.date}</small>
-                  </div>
-                  <div className="mb-1">{renderStars(review.rating)}</div>
-                  <p className="mb-1">{review.comment}</p>
-                </div>
-              ))}
+    <div className="container py-5">
+      <h3 className="mb-4">Customer Reviews</h3>
+      <div className="list-group shadow-sm">
+        {reviews.map((r) => (
+          <div key={r.id} className="list-group-item">
+            <div className="d-flex justify-content-between">
+              <strong>{r.customer}</strong>
+              <span className="text-warning">
+                {"⭐".repeat(r.rating)}
+              </span>
             </div>
-          ) : (
-            <p className="text-muted">No reviews yet.</p>
-          )}
-        </div>
+            <p className="mb-0 small text-muted">{r.comment}</p>
+          </div>
+        ))}
+        {reviews.length === 0 && (
+          <div className="text-center text-muted py-5">
+            No reviews yet.
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
+// components/Customer/PaymentMethods.js
 import React, { useState } from "react";
-import Sidebar from "./Sidebar";
 
 function PaymentMethods() {
   // Mock state (replace with API later)
@@ -10,19 +10,25 @@ function PaymentMethods() {
     { id: 1, bank: "Capitec", accLast4: "1234", type: "Cheque" },
   ]);
 
-  // Common helpers
   const banks = [
-    "Absa", "FNB", "Standard Bank", "Nedbank", "Capitec",
-    "Discovery Bank", "TymeBank", "African Bank", "Investec"
+    "Absa",
+    "FNB",
+    "Standard Bank",
+    "Nedbank",
+    "Capitec",
+    "Discovery Bank",
+    "TymeBank",
+    "African Bank",
+    "Investec",
   ];
 
-  const [activeTab, setActiveTab] = useState("deposit"); // deposit | saved | withdraw
+  const [activeTab, setActiveTab] = useState("deposit");
 
-  // ---- Deposit: Instant EFT (Ozow-style) ----
+  // ---- Deposit: Instant EFT ----
   const [eftBank, setEftBank] = useState("Capitec");
   const startInstantEft = (e) => {
     e.preventDefault();
-    alert(`Instant EFT (mock) via Ozow with ${eftBank}. Next step would open provider widget.`);
+    alert(`Instant EFT (mock) via ${eftBank}`);
   };
 
   // ---- Deposit: Card ----
@@ -36,19 +42,34 @@ function PaymentMethods() {
   });
   const submitCard = (e) => {
     e.preventDefault();
-    alert("Card deposit (mock). In production, this uses a payment gateway tokenization flow.");
+    alert("Card deposit (mock)");
     if (cardForm.save) {
       setSavedCards((prev) => [
         ...prev,
-        { id: Date.now(), brand: "Card", last4: cardForm.number.slice(-4), exp: `${cardForm.expMonth}/${cardForm.expYear}`, default: false }
+        {
+          id: Date.now(),
+          brand: "Card",
+          last4: cardForm.number.slice(-4),
+          exp: `${cardForm.expMonth}/${cardForm.expYear}`,
+          default: false,
+        },
       ]);
     }
-    setCardForm({ number: "", name: "", expMonth: "", expYear: "", cvc: "", save: true });
+    setCardForm({
+      number: "",
+      name: "",
+      expMonth: "",
+      expYear: "",
+      cvc: "",
+      save: true,
+    });
   };
 
-  // ---- Deposit: Manual EFT (Bank transfer) ----
+  // ---- Deposit: Manual EFT ----
   const [manualAmount, setManualAmount] = useState("");
-  const [manualRef, setManualRef] = useState("VND-" + Math.floor(Math.random()*900000 + 100000));
+  const [manualRef] = useState(
+    "VND-" + Math.floor(Math.random() * 900000 + 100000)
+  );
   const copyRef = () => {
     navigator.clipboard.writeText(manualRef);
     alert("Reference copied.");
@@ -64,15 +85,17 @@ function PaymentMethods() {
     setVoucherPin("");
   };
 
-  // ---- Saved methods actions (mock) ----
+  // ---- Saved methods actions ----
   const setDefaultCard = (id) =>
-    setSavedCards((prev) => prev.map(c => ({ ...c, default: c.id === id })));
+    setSavedCards((prev) =>
+      prev.map((c) => ({ ...c, default: c.id === id }))
+    );
   const removeCard = (id) =>
-    setSavedCards((prev) => prev.filter(c => c.id !== id));
+    setSavedCards((prev) => prev.filter((c) => c.id !== id));
   const removeBank = (id) =>
-    setSavedBanks((prev) => prev.filter(b => b.id !== id));
+    setSavedBanks((prev) => prev.filter((b) => b.id !== id));
 
-  // ---- Withdraw setup (bank account) ----
+  // ---- Withdraw ----
   const [withdrawForm, setWithdrawForm] = useState({
     bank: "Capitec",
     accName: "",
@@ -82,291 +105,400 @@ function PaymentMethods() {
   });
   const saveWithdraw = (e) => {
     e.preventDefault();
-    alert("Withdrawal details saved (mock). Later we’ll verify account (AVS) and store securely.");
+    alert("Withdrawal details saved (mock).");
     setSavedBanks((prev) => [
       ...prev,
-      { id: Date.now(), bank: withdrawForm.bank, accLast4: withdrawForm.accNumber.slice(-4), type: withdrawForm.type }
+      {
+        id: Date.now(),
+        bank: withdrawForm.bank,
+        accLast4: withdrawForm.accNumber.slice(-4),
+        type: withdrawForm.type,
+      },
     ]);
-    setWithdrawForm({ bank: "Capitec", accName: "", accNumber: "", branchCode: "", type: "Cheque" });
+    setWithdrawForm({
+      bank: "Capitec",
+      accName: "",
+      accNumber: "",
+      branchCode: "",
+      type: "Cheque",
+    });
     setActiveTab("saved");
   };
 
   return (
-    <div className="container mt-3">
-      <div className="row">
-        {/* Sidebar */}
-        <div className="col-md-3 col-12 mb-2">
-          <Sidebar />
-        </div>
+    <div className="container py-5">
+      <h3 className="mb-4">Payment Methods</h3>
 
-        {/* Main */}
-        <div className="col-md-9 col-12 mb-2">
-          <h3 className="mb-3">Payment Methods</h3>
+      {/* Tabs */}
+      <ul className="nav nav-pills mb-4 justify-content-center">
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === "deposit" ? "active" : ""}`}
+            onClick={() => setActiveTab("deposit")}
+          >
+            Deposit
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === "saved" ? "active" : ""}`}
+            onClick={() => setActiveTab("saved")}
+          >
+            Saved Methods
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === "withdraw" ? "active" : ""}`}
+            onClick={() => setActiveTab("withdraw")}
+          >
+            Withdraw Setup
+          </button>
+        </li>
+      </ul>
 
-          {/* Tabs */}
-          <ul className="nav nav-pills mb-3">
-            <li className="nav-item">
-              <button className={`nav-link ${activeTab === "deposit" ? "active" : ""}`} onClick={() => setActiveTab("deposit")}>
-                Deposit
-              </button>
-            </li>
-            <li className="nav-item">
-              <button className={`nav-link ${activeTab === "saved" ? "active" : ""}`} onClick={() => setActiveTab("saved")}>
-                Saved Methods
-              </button>
-            </li>
-            <li className="nav-item">
-              <button className={`nav-link ${activeTab === "withdraw" ? "active" : ""}`} onClick={() => setActiveTab("withdraw")}>
-                Withdraw Setup
-              </button>
-            </li>
-          </ul>
-
-          {/* Content */}
-          {activeTab === "deposit" && (
-            <div className="row">
-              {/* Instant EFT (Ozow) */}
-              <div className="col-lg-6 col-12 mb-3">
-                <div className="card h-100">
-                  <div className="card-body">
-                    <h5 className="card-title">Instant EFT (Ozow-style)</h5>
-                    <p className="text-muted small">
-                      Pay securely via your bank — funds reflect immediately in your Vendorlution Wallet.
-                    </p>
-                    <form onSubmit={startInstantEft}>
-                      <div className="mb-3">
-                        <label className="form-label">Select your bank</label>
-                        <select className="form-select" value={eftBank} onChange={(e) => setEftBank(e.target.value)}>
-                          {banks.map((b) => <option key={b} value={b}>{b}</option>)}
-                        </select>
-                      </div>
-                      <button type="submit" className="btn btn-primary">
-                        Continue to Instant EFT
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card */}
-              <div className="col-lg-6 col-12 mb-3">
-                <div className="card h-100">
-                  <div className="card-body">
-                    <h5 className="card-title">Card</h5>
-                    <p className="text-muted small">
-                      Visa/Mastercard accepted. We’ll tokenize cards when we wire the gateway.
-                    </p>
-                    <form onSubmit={submitCard}>
-                      <div className="mb-3">
-                        <label className="form-label">Card Number</label>
-                        <input className="form-control" value={cardForm.number} onChange={(e)=>setCardForm({...cardForm, number: e.target.value})} placeholder="0000 0000 0000 0000" required />
-                      </div>
-                      <div className="mb-3">
-                        <label className="form-label">Name on Card</label>
-                        <input className="form-control" value={cardForm.name} onChange={(e)=>setCardForm({...cardForm, name: e.target.value})} required />
-                      </div>
-                      <div className="row">
-                        <div className="col-4 mb-3">
-                          <label className="form-label">Exp. Month</label>
-                          <input className="form-control" value={cardForm.expMonth} onChange={(e)=>setCardForm({...cardForm, expMonth: e.target.value})} placeholder="MM" required />
-                        </div>
-                        <div className="col-4 mb-3">
-                          <label className="form-label">Exp. Year</label>
-                          <input className="form-control" value={cardForm.expYear} onChange={(e)=>setCardForm({...cardForm, expYear: e.target.value})} placeholder="YY" required />
-                        </div>
-                        <div className="col-4 mb-3">
-                          <label className="form-label">CVC</label>
-                          <input className="form-control" value={cardForm.cvc} onChange={(e)=>setCardForm({...cardForm, cvc: e.target.value})} placeholder="123" required />
-                        </div>
-                      </div>
-                      <div className="form-check mb-3">
-                        <input className="form-check-input" type="checkbox" id="saveCard" checked={cardForm.save} onChange={(e)=>setCardForm({...cardForm, save: e.target.checked})}/>
-                        <label className="form-check-label" htmlFor="saveCard">Save card for faster deposits</label>
-                      </div>
-                      <button type="submit" className="btn btn-success">Deposit with Card</button>
-                    </form>
-                  </div>
-                </div>
-              </div>
-
-              {/* Manual EFT */}
-              <div className="col-lg-6 col-12 mb-3">
-                <div className="card h-100">
-                  <div className="card-body">
-                    <h5 className="card-title">Bank Transfer (EFT)</h5>
-                    <p className="text-muted small">
-                      Transfer from your bank app. Use the unique reference so we can auto-match your deposit.
-                    </p>
-                    <div className="mb-3">
-                      <label className="form-label">Amount (R)</label>
-                      <input className="form-control" value={manualAmount} onChange={(e)=>setManualAmount(e.target.value)} placeholder="e.g. 500" />
-                    </div>
-                    <ul className="list-group mb-3">
-                      <li className="list-group-item d-flex justify-content-between">
-                        <span>Account Name</span><strong>Vendorlution Wallet</strong>
-                      </li>
-                      <li className="list-group-item d-flex justify-content-between">
-                        <span>Bank</span><strong>Standard Bank</strong>
-                      </li>
-                      <li className="list-group-item d-flex justify-content-between">
-                        <span>Account Number</span><strong>000123456</strong>
-                      </li>
-                      <li className="list-group-item d-flex justify-content-between">
-                        <span>Branch Code</span><strong>051001</strong>
-                      </li>
-                      <li className="list-group-item d-flex justify-content-between">
-                        <span>Reference</span>
-                        <div>
-                          <strong>{manualRef}</strong>
-                          <button className="btn btn-sm btn-outline-secondary ms-2" onClick={copyRef}>Copy</button>
-                        </div>
-                      </li>
-                    </ul>
-                    <div className="alert alert-info small mb-0">
-                      EFTs reflect when received. Use the reference exactly to avoid delays.
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Voucher */}
-              <div className="col-lg-6 col-12 mb-3">
-                <div className="card h-100">
-                  <div className="card-body">
-                    <h5 className="card-title">Voucher Top-Up</h5>
-                    <p className="text-muted small">
-                      Redeem retail vouchers to fund your Vendorlution Wallet (e.g., Flash/1Voucher, blu).
-                    </p>
-                    <form onSubmit={redeemVoucher}>
-                      <div className="mb-3">
-                        <label className="form-label">Provider</label>
-                        <select className="form-select" value={voucherProvider} onChange={(e)=>setVoucherProvider(e.target.value)}>
-                          <option>Flash / 1Voucher</option>
-                          <option>blu Voucher</option>
-                          <option>OTT / Other</option>
-                        </select>
-                      </div>
-                      <div className="mb-3">
-                        <label className="form-label">Voucher PIN</label>
-                        <input className="form-control" value={voucherPin} onChange={(e)=>setVoucherPin(e.target.value)} placeholder="Enter PIN" />
-                      </div>
-                      <button type="submit" className="btn btn-primary">Redeem Voucher</button>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "saved" && (
-            <div className="row">
-              {/* Saved Cards */}
-              <div className="col-lg-6 col-12 mb-3">
-                <div className="card h-100">
-                  <div className="card-body">
-                    <h5 className="card-title">Saved Cards</h5>
-                    {savedCards.length ? (
-                      <div className="list-group">
-                        {savedCards.map((c) => (
-                          <div key={c.id} className="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                              <strong>{c.brand}</strong> •••• {c.last4} <span className="text-muted">({c.exp})</span>
-                              {c.default && <span className="badge bg-success ms-2">Default</span>}
-                            </div>
-                            <div>
-                              {!c.default && (
-                                <button className="btn btn-sm btn-outline-primary me-2" onClick={()=>setDefaultCard(c.id)}>
-                                  Set Default
-                                </button>
-                              )}
-                              <button className="btn btn-sm btn-outline-danger" onClick={()=>removeCard(c.id)}>
-                                Remove
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-muted mb-0">No saved cards yet.</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Saved Bank Accounts (for withdraw) */}
-              <div className="col-lg-6 col-12 mb-3">
-                <div className="card h-100">
-                  <div className="card-body">
-                    <h5 className="card-title">Saved Bank Accounts</h5>
-                    {savedBanks.length ? (
-                      <div className="list-group">
-                        {savedBanks.map((b) => (
-                          <div key={b.id} className="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                              <strong>{b.bank}</strong> •••• {b.accLast4}
-                              <span className="text-muted ms-2">({b.type})</span>
-                            </div>
-                            <button className="btn btn-sm btn-outline-danger" onClick={()=>removeBank(b.id)}>
-                              Remove
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-muted mb-0">No saved bank accounts yet.</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "withdraw" && (
-            <div className="card">
+      {/* Deposit */}
+      {activeTab === "deposit" && (
+        <div className="row g-4">
+          {/* Instant EFT */}
+          <div className="col-lg-6 col-12">
+            <div className="card shadow-sm border-0 h-100">
               <div className="card-body">
-                <h5 className="card-title">Withdrawal Details</h5>
-                <p className="text-muted small">Add a bank account to receive withdrawals from your Vendorlution Wallet.</p>
-                <form onSubmit={saveWithdraw}>
-                  <div className="row">
-                    <div className="col-md-6 mb-3">
-                      <label className="form-label">Bank</label>
-                      <select className="form-select" value={withdrawForm.bank} onChange={(e)=>setWithdrawForm({...withdrawForm, bank: e.target.value})}>
-                        {banks.map((b) => <option key={b}>{b}</option>)}
-                      </select>
-                    </div>
-                    <div className="col-md-6 mb-3">
-                      <label className="form-label">Account Holder</label>
-                      <input className="form-control" value={withdrawForm.accName} onChange={(e)=>setWithdrawForm({...withdrawForm, accName: e.target.value})} required />
-                    </div>
-                    <div className="col-md-6 mb-3">
-                      <label className="form-label">Account Number</label>
-                      <input className="form-control" value={withdrawForm.accNumber} onChange={(e)=>setWithdrawForm({...withdrawForm, accNumber: e.target.value})} required />
-                    </div>
-                    <div className="col-md-3 mb-3">
-                      <label className="form-label">Branch Code</label>
-                      <input className="form-control" value={withdrawForm.branchCode} onChange={(e)=>setWithdrawForm({...withdrawForm, branchCode: e.target.value})} />
-                    </div>
-                    <div className="col-md-3 mb-3">
-                      <label className="form-label">Account Type</label>
-                      <select className="form-select" value={withdrawForm.type} onChange={(e)=>setWithdrawForm({...withdrawForm, type: e.target.value})}>
-                        <option>Cheque</option>
-                        <option>Savings</option>
-                        <option>Transmission</option>
-                      </select>
-                    </div>
+                <h5 className="card-title">Instant EFT</h5>
+                <form onSubmit={startInstantEft}>
+                  <div className="mb-3">
+                    <label className="form-label">Bank</label>
+                    <select
+                      className="form-select"
+                      value={eftBank}
+                      onChange={(e) => setEftBank(e.target.value)}
+                    >
+                      {banks.map((b) => (
+                        <option key={b}>{b}</option>
+                      ))}
+                    </select>
                   </div>
-                  <button type="submit" className="btn btn-primary">Save Withdrawal Details</button>
+                  <button type="submit" className="btn btn-dark w-100">
+                    Continue
+                  </button>
                 </form>
               </div>
             </div>
-          )}
+          </div>
 
-          <p className="text-muted small mt-2">
-            <i className="fa fa-info-circle me-1"></i>
-            Deposits go to your Vendorlution Wallet. Purchases move funds to a seller’s Vendorlution wallet and are released after you confirm delivery.
-          </p>
+          {/* Card */}
+          <div className="col-lg-6 col-12">
+            <div className="card shadow-sm border-0 h-100">
+              <div className="card-body">
+                <h5 className="card-title">Card</h5>
+                <form onSubmit={submitCard}>
+                  <input
+                    className="form-control mb-2"
+                    placeholder="Card Number"
+                    value={cardForm.number}
+                    onChange={(e) =>
+                      setCardForm({ ...cardForm, number: e.target.value })
+                    }
+                    required
+                  />
+                  <input
+                    className="form-control mb-2"
+                    placeholder="Name on Card"
+                    value={cardForm.name}
+                    onChange={(e) =>
+                      setCardForm({ ...cardForm, name: e.target.value })
+                    }
+                    required
+                  />
+                  <div className="row mb-2">
+                    <div className="col-4">
+                      <input
+                        className="form-control"
+                        placeholder="MM"
+                        value={cardForm.expMonth}
+                        onChange={(e) =>
+                          setCardForm({ ...cardForm, expMonth: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="col-4">
+                      <input
+                        className="form-control"
+                        placeholder="YY"
+                        value={cardForm.expYear}
+                        onChange={(e) =>
+                          setCardForm({ ...cardForm, expYear: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="col-4">
+                      <input
+                        className="form-control"
+                        placeholder="CVC"
+                        value={cardForm.cvc}
+                        onChange={(e) =>
+                          setCardForm({ ...cardForm, cvc: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="form-check mb-3">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      checked={cardForm.save}
+                      onChange={(e) =>
+                        setCardForm({ ...cardForm, save: e.target.checked })
+                      }
+                    />
+                    <label className="form-check-label">Save this card</label>
+                  </div>
+                  <button type="submit" className="btn btn-success w-100">
+                    Deposit
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          {/* Manual EFT */}
+          <div className="col-lg-6 col-12">
+            <div className="card shadow-sm border-0 h-100">
+              <div className="card-body">
+                <h5 className="card-title">Bank Transfer (Manual EFT)</h5>
+                <div className="mb-3">
+                  <input
+                    className="form-control"
+                    placeholder="Amount (R)"
+                    value={manualAmount}
+                    onChange={(e) => setManualAmount(e.target.value)}
+                  />
+                </div>
+                <ul className="list-group small">
+                  <li className="list-group-item d-flex justify-content-between">
+                    Account Name <strong>Vendorlution Wallet</strong>
+                  </li>
+                  <li className="list-group-item d-flex justify-content-between">
+                    Bank <strong>Standard Bank</strong>
+                  </li>
+                  <li className="list-group-item d-flex justify-content-between">
+                    Account Number <strong>000123456</strong>
+                  </li>
+                  <li className="list-group-item d-flex justify-content-between">
+                    Branch Code <strong>051001</strong>
+                  </li>
+                  <li className="list-group-item d-flex justify-content-between">
+                    Reference{" "}
+                    <strong>
+                      {manualRef}{" "}
+                      <button
+                        className="btn btn-sm btn-outline-secondary ms-2"
+                        onClick={copyRef}
+                      >
+                        Copy
+                      </button>
+                    </strong>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Voucher */}
+          <div className="col-lg-6 col-12">
+            <div className="card shadow-sm border-0 h-100">
+              <div className="card-body">
+                <h5 className="card-title">Voucher</h5>
+                <form onSubmit={redeemVoucher}>
+                  <select
+                    className="form-select mb-2"
+                    value={voucherProvider}
+                    onChange={(e) => setVoucherProvider(e.target.value)}
+                  >
+                    <option>Flash / 1Voucher</option>
+                    <option>blu Voucher</option>
+                    <option>OTT / Other</option>
+                  </select>
+                  <input
+                    className="form-control mb-2"
+                    placeholder="Voucher PIN"
+                    value={voucherPin}
+                    onChange={(e) => setVoucherPin(e.target.value)}
+                  />
+                  <button type="submit" className="btn btn-primary w-100">
+                    Redeem
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Saved */}
+      {activeTab === "saved" && (
+        <div className="row g-4">
+          <div className="col-lg-6 col-12">
+            <div className="card shadow-sm border-0 h-100">
+              <div className="card-body">
+                <h5>Saved Cards</h5>
+                {savedCards.length ? (
+                  savedCards.map((c) => (
+                    <div
+                      key={c.id}
+                      className="d-flex justify-content-between align-items-center border-bottom py-2"
+                    >
+                      <span>
+                        {c.brand} •••• {c.last4} ({c.exp})
+                        {c.default && (
+                          <span className="badge bg-success ms-2">Default</span>
+                        )}
+                      </span>
+                      <div>
+                        {!c.default && (
+                          <button
+                            className="btn btn-sm btn-outline-primary me-2"
+                            onClick={() => setDefaultCard(c.id)}
+                          >
+                            Default
+                          </button>
+                        )}
+                        <button
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => removeCard(c.id)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-muted">No saved cards.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="col-lg-6 col-12">
+            <div className="card shadow-sm border-0 h-100">
+              <div className="card-body">
+                <h5>Saved Bank Accounts</h5>
+                {savedBanks.length ? (
+                  savedBanks.map((b) => (
+                    <div
+                      key={b.id}
+                      className="d-flex justify-content-between align-items-center border-bottom py-2"
+                    >
+                      <span>
+                        {b.bank} •••• {b.accLast4} ({b.type})
+                      </span>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => removeBank(b.id)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-muted">No bank accounts saved.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Withdraw */}
+      {activeTab === "withdraw" && (
+        <div className="card shadow-sm border-0">
+          <div className="card-body">
+            <h5>Withdrawal Details</h5>
+            <form onSubmit={saveWithdraw}>
+              <div className="row">
+                <div className="col-md-6 mb-2">
+                  <label className="form-label">Bank</label>
+                  <select
+                    className="form-select"
+                    value={withdrawForm.bank}
+                    onChange={(e) =>
+                      setWithdrawForm({ ...withdrawForm, bank: e.target.value })
+                    }
+                  >
+                    {banks.map((b) => (
+                      <option key={b}>{b}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-md-6 mb-2">
+                  <label className="form-label">Account Holder</label>
+                  <input
+                    className="form-control"
+                    value={withdrawForm.accName}
+                    onChange={(e) =>
+                      setWithdrawForm({
+                        ...withdrawForm,
+                        accName: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div className="col-md-6 mb-2">
+                  <label className="form-label">Account Number</label>
+                  <input
+                    className="form-control"
+                    value={withdrawForm.accNumber}
+                    onChange={(e) =>
+                      setWithdrawForm({
+                        ...withdrawForm,
+                        accNumber: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div className="col-md-3 mb-2">
+                  <label className="form-label">Branch Code</label>
+                  <input
+                    className="form-control"
+                    value={withdrawForm.branchCode}
+                    onChange={(e) =>
+                      setWithdrawForm({
+                        ...withdrawForm,
+                        branchCode: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="col-md-3 mb-2">
+                  <label className="form-label">Account Type</label>
+                  <select
+                    className="form-select"
+                    value={withdrawForm.type}
+                    onChange={(e) =>
+                      setWithdrawForm({
+                        ...withdrawForm,
+                        type: e.target.value,
+                      })
+                    }
+                  >
+                    <option>Cheque</option>
+                    <option>Savings</option>
+                    <option>Transmission</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" className="btn btn-dark mt-2">
+                Save
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
