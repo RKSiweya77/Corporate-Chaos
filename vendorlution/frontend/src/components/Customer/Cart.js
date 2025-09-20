@@ -1,5 +1,4 @@
 // components/Customer/Cart.js
-import React from "react";
 import { Link } from "react-router-dom";
 import logo from "../../logo.png";
 
@@ -17,9 +16,9 @@ function Cart() {
 
       {cartItems.length > 0 ? (
         <>
-          <div className="table-responsive shadow-sm">
+          <div className="table-responsive shadow-sm rounded">
             <table className="table align-middle">
-              <thead className="table-light">
+              <thead className="table-dark text-white">
                 <tr>
                   <th>Product</th>
                   <th>Price</th>
@@ -36,9 +35,10 @@ function Cart() {
                         <img
                           src={logo}
                           alt={item.title}
-                          width="50"
-                          height="50"
-                          className="me-2 rounded border"
+                          width="60"
+                          height="60"
+                          className="me-3 rounded border"
+                          style={{ objectFit: "cover" }}
                         />
                         <div>
                           <p className="mb-0 fw-semibold">{item.title}</p>
@@ -46,9 +46,9 @@ function Cart() {
                         </div>
                       </div>
                     </td>
-                    <td>R {item.price}</td>
+                    <td className="fw-semibold">R {item.price}</td>
                     <td>{item.qty}</td>
-                    <td>R {item.price * item.qty}</td>
+                    <td className="fw-semibold">R {item.price * item.qty}</td>
                     <td>
                       <button className="btn btn-sm btn-outline-danger">
                         <i className="fa fa-trash"></i>
@@ -60,17 +60,22 @@ function Cart() {
             </table>
           </div>
 
-          <div className="d-flex justify-content-between align-items-center mt-3">
-            <h5>Total: R {total}</h5>
-            <Link to="/checkout" className="btn btn-dark">
-              Proceed to Checkout
-            </Link>
+          {/* Checkout summary card */}
+          <div className="card shadow-sm border-0 mt-4">
+            <div className="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+              <h5 className="mb-3 mb-md-0">
+                Total: <span className="fw-bold">R {total}</span>
+              </h5>
+              <Link to="/checkout" className="btn btn-dark btn-lg">
+                Proceed to Checkout <i className="fa fa-arrow-right ms-2"></i>
+              </Link>
+            </div>
           </div>
         </>
       ) : (
         <div className="text-center py-5 text-muted">
-          <i className="fa fa-shopping-cart fa-2x mb-2"></i>
-          <p>Your cart is empty</p>
+          <i className="fa fa-shopping-cart fa-3x mb-3"></i>
+          <p className="fw-semibold">Your cart is empty</p>
         </div>
       )}
     </div>
