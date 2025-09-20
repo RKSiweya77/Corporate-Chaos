@@ -1,0 +1,35 @@
+/* Hero.css */
+
+/* General caption styles */
+#heroCarousel .carousel-caption {
+  color: #000000;
+  text-shadow: none;
+}
+
+/* SplitText titles */
+.hero-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #000000; /* pitch black */
+  display: inline-block;
+}
+
+.hero-text {
+  font-size: 1rem;
+  color: #000000; /* pitch black */
+  margin-top: 8px;
+}
+
+/* Buttons */
+#heroCarousel .carousel-caption .btn {
+  background-color: #000000; /* pitch black */
+  border-color: #000000;
+  color: #ffffff; /* white text */
+  margin-top: 10px;
+}
+
+#heroCarousel .carousel-caption .btn:hover {
+  background-color: #333333; /* dark grey */
+  border-color: #333333;
+  color: #ffffff;
+}

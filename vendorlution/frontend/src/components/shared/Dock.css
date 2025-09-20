@@ -1,0 +1,105 @@
+/* --------------------- DOCK CONTAINER --------------------- */
+.dock-item {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  background-color: transparent; /* fully transparent */
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+/* Hover effect for dock items */
+.dock-item:hover {
+  transform: scale(1.2); /* enlarge on hover */
+}
+
+/* --------------------- DOCK ICON --------------------- */
+.dock-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.4rem;
+  color: var(--secondary-color, #000000); /* black icons by default */
+  transition: color 0.2s ease, transform 0.2s ease, text-shadow 0.2s ease;
+}
+
+/* When hovering the dock item, icon remains pitch black but can glow */
+.dock-item:hover .dock-icon {
+  color: var(--secondary-color, #000000); /* stay pitch black */
+  text-shadow: 0 0 6px rgba(0,0,0,0.5); /* subtle glow for visibility */
+}
+
+/* --------------------- BUTTONS INSIDE DOCK --------------------- */
+.dock-item .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  transition: all 0.2s ease;
+  color: var(--secondary-color, #000000); /* black buttons text by default */
+  border: 1px solid var(--secondary-color, #000000); /* visible border */
+  background-color: transparent; /* fully transparent */
+  text-shadow: none; /* remove glow by default */
+}
+
+.dock-item .btn:hover {
+  color: var(--secondary-color, #000000); /* stay pitch black */
+  text-shadow: 0 0 4px rgba(0,0,0,0.5); /* subtle glow */
+  border-color: var(--secondary-color, #000000); /* keep border black */
+}
+
+/* --------------------- NAVBAR STYLING --------------------- */
+.navbar {
+  background-color: transparent; /* fully transparent navbar */
+  border-bottom: 1px solid rgba(128,128,128,0.5);
+  padding: 0.5rem 1rem;
+}
+
+.navbar .navbar-brand {
+  color: var(--secondary-color, #000000); /* visible brand text */
+  font-weight: 700;
+}
+
+.navbar .navbar-brand img {
+  object-fit: contain;
+}
+
+.navbar .form-control {
+  border: 1px solid rgba(128,128,128,0.5);
+  border-radius: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  background-color: transparent; /* transparent input */
+  color: var(--secondary-color, #000000);
+}
+
+.navbar .form-control:focus {
+  outline: none;
+  border-color: var(--secondary-color, #000000);
+  box-shadow: 0 0 0 0.2rem rgba(0,0,0,0.1);
+}
+
+/* --------------------- OFFCANVAS --------------------- */
+.offcanvas {
+  background-color: transparent; /* fully transparent */
+  color: var(--secondary-color, #000000);
+}
+
+.offcanvas .offcanvas-header {
+  border-bottom: 1px solid rgba(128,128,128,0.5);
+}
+
+.offcanvas .offcanvas-body a {
+  display: block;
+  padding: 0.5rem 0;
+  color: var(--secondary-color, #000000);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.offcanvas .offcanvas-body a:hover {
+  color: var(--tertiary-color, #808080);
+}

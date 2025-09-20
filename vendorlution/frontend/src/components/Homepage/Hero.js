@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import logo from "../../logo.png"; // placeholder until API images are available
+import logo from "../../logo.png"; // placeholder image
+import "./Hero.css";
+import SplitText from "./SplitText"; // ✅ Import SplitText
 
 function Hero() {
-  // Mock slides (using logo as placeholder image)
   const [slides, setSlides] = useState([
     {
       id: 1,
@@ -31,13 +32,13 @@ function Hero() {
     },
   ]);
 
-  // 🔗 Later: replace mock with API fetch
   useEffect(() => {
-    // Example (uncomment once API ready):
-    // fetch("/api/slides/")
-    //   .then((res) => res.json())
-    //   .then((data) => setSlides(data));
+    // Later: fetch API data for slides
   }, []);
+
+  const handleAnimationComplete = () => {
+    console.log("All letters have animated!");
+  };
 
   return (
     <div
@@ -68,12 +69,26 @@ function Hero() {
             <img
               src={s.image}
               className="d-block w-100"
-              alt={s.title}
+              alt="hero slide"
               style={{ maxHeight: "400px", objectFit: "contain" }}
             />
             <div className="carousel-caption d-none d-md-block text-start">
-              <h5>{s.title}</h5>
-              <p>{s.text}</p>
+              {/* ✅ SplitText for animated title */}
+              <SplitText
+                text={s.title}
+                className="hero-title"
+                delay={100}
+                duration={0.6}
+                ease="power3.out"
+                splitType="chars"
+                from={{ opacity: 0, y: 40 }}
+                to={{ opacity: 1, y: 0 }}
+                threshold={0.1}
+                rootMargin="-100px"
+                textAlign="left"
+                onLetterAnimationComplete={handleAnimationComplete}
+              />
+              <p className="hero-text">{s.text}</p>
               <Link to={s.link} className="btn btn-primary btn-sm">
                 {s.btnText}
               </Link>
