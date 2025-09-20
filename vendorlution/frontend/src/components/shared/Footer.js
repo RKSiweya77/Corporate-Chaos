@@ -8,10 +8,11 @@ function Footer() {
           {/* Brand */}
           <div className="col-md-4">
             <h5 className="fw-bold">Vendorlution</h5>
-            <p className="small text-muted">
-              <div className="text-decoration-none text-light">A modern marketplace with escrow wallets and trusted vendor buyer
-              interactions.</div> 
-            </p>
+            
+              <div className="text-decoration-none text-light"><p>A modern marketplace with escrow wallets and trusted vendor buyer
+              interactions.</p>
+              </div>
+
           </div>
 
           {/* Quick Links */}
