@@ -1,6 +1,7 @@
 // components/Customer/AddAddress.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import"./AddAddress.css";
 
 const AddAddress = () => {
   const navigate = useNavigate();
