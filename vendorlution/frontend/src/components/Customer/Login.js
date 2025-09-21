@@ -82,7 +82,7 @@ const Login = () => {
                 name="password"
                 value={form.password}
                 onChange={handleChange}
-                placeholder="••••••••"
+                placeholder="Your password"
                 required
               />
             </div>
