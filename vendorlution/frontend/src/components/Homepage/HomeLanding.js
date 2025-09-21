@@ -35,7 +35,7 @@ function HomeLanding() {
         <HowItWorks />
         <Testimonials />
       </div>
-      <FloatingChatButton />
+     
     </>
   );
 }
