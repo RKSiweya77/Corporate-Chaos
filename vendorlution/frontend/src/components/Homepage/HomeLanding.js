@@ -1,43 +1,25 @@
-import Hero from "./Hero";
+import React from "react";
 import CategoryScroller from "./CategoryScroller";
-import ProductGridSection from "./ProductGridSection";
 import FeaturedVendors from "./FeaturedVendors";
-import HowItWorks from "./HowItWorks";
-import Testimonials from "./Testimonials";
-import FloatingChatButton from "./FloatingChatButton";
+import NewArrivals from "../products/NewArrivals";
+import PopularProducts from "../products/PopularProducts";
 
-function HomeLanding() {
+export default function HomeLanding() {
   return (
-    <>
-      <Hero />
-      <div className="container py-4">
-        <CategoryScroller />
+    <main className="container py-4">
+      {/* Hero / Banner area could go here */}
 
-        {/* New Arrivals */}
-        <ProductGridSection
-          title="New Arrivals"
-          linkTo="/products/new"
-          count={8}
-          variant="new"
-        />
+      {/* Categories */}
+      <CategoryScroller />
 
-        {/* Popular Products */}
-        <ProductGridSection
-          title="Popular Products"
-          linkTo="/products/popular"
-          count={8}
-          variant="popular"
-        />
+      {/* New Arrivals */}
+      <NewArrivals />
 
-        {/* Featured Vendors */}
-        <FeaturedVendors />
+      {/* Popular Products */}
+      <PopularProducts />
 
-        <HowItWorks />
-        <Testimonials />
-      </div>
-      <FloatingChatButton />
-    </>
+      {/* Featured Vendors */}
+      <FeaturedVendors />
+    </main>
   );
 }
-
-export default HomeLanding;

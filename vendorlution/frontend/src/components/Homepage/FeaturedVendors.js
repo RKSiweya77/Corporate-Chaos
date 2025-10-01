@@ -1,51 +1,75 @@
-import { motion } from "framer-motion";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import logo from "../../logo.png";
+import api from "../../api/axios";
 
-const VENDORS = [
-  { id: 1, name: "TechWorld Store", cats: "Electronics, Mobile" },
-  { id: 2, name: "Fashion Hub", cats: "Fashion" },
-  { id: 3, name: "SportsPro", cats: "Sports" },
-  { id: 4, name: "Home Comforts", cats: "Home & Living" },
-];
+function toMedia(url) {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  try {
+    const base = api.defaults.baseURL || "/api";
+    const origin = base.startsWith("http")
+      ? new URL(base).origin
+      : window.location.origin;
+    return `${origin}${url.startsWith("/") ? url : `/${url}`}`;
+  } catch {
+    return url;
+  }
+}
 
-function FeaturedVendors() {
+export default function FeaturedVendors() {
+  const [vendors, setVendors] = useState([]);
+
+  useEffect(() => {
+    api
+      .get("/vendors/featured/?limit=8")
+      .then((res) => setVendors(Array.isArray(res.data) ? res.data : []))
+      .catch((e) => console.error("Vendors fetch error:", e));
+  }, []);
+
+  if (!vendors.length) return null;
+
   return (
     <section className="mb-4">
-      <div className="d-flex align-items-center justify-content-between mb-2">
-        <h3 className="mb-0">Featured Vendors</h3>
-        <Link to="/explore-vendors" className="btn btn-sm btn-dark">
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <h5 className="mb-0">Featured Vendors</h5>
+        <Link to="/vendors" className="btn btn-sm btn-outline-dark">
           Explore Vendors
         </Link>
       </div>
       <div className="row g-3">
-        {VENDORS.map((v) => (
-          <motion.div
-            key={v.id}
-            className="col-12 col-md-6 col-lg-3"
-            whileHover={{ y: -4 }}
-            transition={{ type: "spring", stiffness: 250, damping: 20 }}
-          >
-            <div className="card h-100 shadow-sm border-0">
-              <img src={logo} className="card-img-top" alt={v.name} />
-              <div className="card-body">
-                <h5 className="card-title mb-1">{v.name}</h5>
-                <div className="small text-muted">Categories: {v.cats}</div>
-                <Link
-                  to={`/vendor/store/${v.name
-                    .toLowerCase()
-                    .replace(/\s+/g, "-")}/${v.id}`}
-                  className="btn btn-sm btn-outline-dark mt-2"
+        {vendors.map((v) => (
+          <div className="col-6 col-md-3" key={v.id}>
+            <div className="card h-100 border-0 shadow-sm">
+              {v.banner ? (
+                <img
+                  src={toMedia(v.banner)}
+                  alt={v.shop_name}
+                  className="card-img-top"
+                  style={{ height: 120, objectFit: "cover" }}
+                />
+              ) : (
+                <div
+                  className="bg-light d-flex align-items-center justify-content-center"
+                  style={{ height: 120 }}
                 >
+                  <span className="text-muted small">No banner</span>
+                </div>
+              )}
+              <div className="card-body">
+                <div className="fw-semibold">{v.shop_name}</div>
+                <div className="small text-muted">
+                  {v.description?.slice(0, 70) || "—"}
+                </div>
+              </div>
+              <div className="card-footer bg-white border-0">
+                <Link to={`/vendor/${encodeURIComponent(v.slug)}`} className="btn btn-sm btn-dark w-100">
                   View Store
                 </Link>
               </div>
             </div>
-          </motion.div>
+          </div>
         ))}
       </div>
     </section>
   );
 }
-
-export default FeaturedVendors;

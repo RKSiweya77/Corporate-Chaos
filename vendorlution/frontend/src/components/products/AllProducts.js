@@ -1,33 +1,37 @@
-// src/components/products/AllProducts.js
-import ProductCard from "../Homepage/ProductCard";
-import Pagination from "../shared/Pagination";
+// components/products/AllProducts.js
+import React, { useEffect, useState } from "react";
+import api from "../../api/axios";
 
 function AllProducts() {
+  const [products, setProducts] = useState([]);
+
+  useEffect(() => {
+    api.get("products/")
+      .then((res) => setProducts(res.data))
+      .catch((err) => console.error("Error fetching products:", err));
+  }, []);
+
   return (
-    <main className="mt-4">
-      <div className="container">
-        <div className="d-flex flex-wrap align-items-center justify-content-between mb-3">
-          <h3 className="mb-2 mb-md-0">All Products</h3>
-          <div className="d-flex align-items-center">
-            <span className="me-2 text-muted small">Sort by:</span>
-            <select className="form-select form-select-sm">
-              <option value="latest">Latest</option>
-              <option value="popular">Most Popular</option>
-              <option value="priceLow">Price: Low to High</option>
-              <option value="priceHigh">Price: High to Low</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="row g-3">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <ProductCard key={i} title={`Product ${i + 1}`} price={1000 + i * 100} />
-          ))}
-        </div>
-
-        <Pagination />
+    <div className="container py-4">
+      <h3 className="mb-4">All Products</h3>
+      <div className="row g-3">
+        {products.length > 0 ? (
+          products.map((p) => (
+            <div key={p.id} className="col-md-3 col-6">
+              <div className="card h-100 shadow-sm border-0">
+                <div className="card-body text-center">
+                  <h6 className="fw-bold">{p.title}</h6>
+                  <p className="text-muted small">R {p.price}</p>
+                  <p className="small">{p.detail}</p>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="text-muted">No products available.</p>
+        )}
       </div>
-    </main>
+    </div>
   );
 }
 
