@@ -1,89 +1,30 @@
-import React, { useState } from "react";
-import VendorSidebar from "./VendorSidebar";
+import React from "react";
 
-function VendorChangePassword() {
-  const [form, setForm] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (form.newPassword !== form.confirmPassword) {
-      alert("New password and confirmation do not match!");
-      return;
-    }
-    alert("Password change submitted (mock). Later this will call backend API.");
-    setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-  };
-
+export default function VendorChangePassword() {
+  // There is no backend endpoint for password change yet in your project scope.
+  // Leaving this as a placeholder so the route doesn’t break.
   return (
-    <div className="container mt-3">
-      <div className="row">
-        {/* Sidebar */}
-        <div className="col-md-3 col-12 mb-2">
-          <VendorSidebar />
-        </div>
-
-        {/* Main Content */}
-        <div className="col-md-9 col-12 mb-2">
-          <h3 className="mb-3">Change Password</h3>
-
-          <div className="card">
-            <div className="card-body">
-              <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                  <label className="form-label">Current Password</label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    name="currentPassword"
-                    value={form.currentPassword}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label">New Password</label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    name="newPassword"
-                    value={form.newPassword}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label">Confirm New Password</label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    name="confirmPassword"
-                    value={form.confirmPassword}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                <button type="submit" className="btn btn-primary">
-                  <i className="fa fa-key me-2"></i> Update Password
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
+    <div className="container py-5" style={{ maxWidth: 560 }}>
+      <h3 className="fw-bold mb-3">Change Password</h3>
+      <div className="alert alert-info">
+        Password change via vendor panel is coming soon.
+        <br />
+        In the meantime, you can change your password from Django admin or we can add a JWT-friendly endpoint next.
       </div>
+
+      <form className="card p-4 shadow-sm border-0">
+        <div className="mb-3">
+          <label className="form-label">Current Password</label>
+          <input className="form-control" type="password" disabled placeholder="Coming soon" />
+        </div>
+        <div className="mb-3">
+          <label className="form-label">New Password</label>
+          <input className="form-control" type="password" disabled placeholder="Coming soon" />
+        </div>
+        <button className="btn btn-dark" type="button" disabled>
+          Update Password
+        </button>
+      </form>
     </div>
   );
 }
-
-export default VendorChangePassword;

@@ -1,16 +1,14 @@
-// App.js
+// frontend/src/App.js
 import { Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
-import { VendorProvider } from "./context/VendorContext"; // ✅ Vendor context
+import { VendorProvider } from "./context/VendorContext";
 
 import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap/dist/js/bootstrap.js";
 
-// Shared
 import Header from "./components/shared/Header";
 import Footer from "./components/shared/Footer";
 
-// Website
 import HomeLanding from "./components/Homepage/HomeLanding";
 import AllProducts from "./components/products/AllProducts";
 import Categories from "./components/products/Categories";
@@ -18,7 +16,6 @@ import CategoryProducts from "./components/products/CategoryProducts";
 import ProductDetail from "./components/products/ProductDetail";
 import Checkout from "./components/checkout/Checkout";
 
-// Explore & Collections
 import ExploreVendors from "./components/Vendor/ExploreVendors";
 import PopularProducts from "./components/products/PopularProducts";
 import NewArrivals from "./components/products/NewArrivals";
@@ -36,7 +33,7 @@ import ChangePassword from "./components/Customer/ChangePassword";
 import AddressList from "./components/Customer/AddressList";
 import AddAddress from "./components/Customer/AddAddress";
 import CustomerInbox from "./components/Customer/CustomerInbox";
-import ChatWindow from "./components/Customer/ChatWindow";   // ✅ chat window
+import ChatWindow from "./components/Customer/ChatWindow";
 import CustomerWallet from "./components/Customer/CustomerWallet";
 import CustomerCoupons from "./components/Customer/CustomerCoupons";
 import CustomerReviews from "./components/Customer/CustomerReviews";
@@ -55,7 +52,7 @@ import VendorOrders from "./components/Vendor/VendorOrders";
 import VendorCustomers from "./components/Vendor/VendorCustomers";
 import VendorReports from "./components/Vendor/VendorReports";
 import VendorProfile from "./components/Vendor/VendorProfile";
-import VendorEditProfile from "./components/Vendor/VendorEditProfile"; // ✅ new
+import VendorEditProfile from "./components/Vendor/VendorEditProfile";
 import VendorPublicProfile from "./components/Vendor/VendorPublicProfile";
 import VendorWallet from "./components/Vendor/VendorWallet";
 import PayoutsHistory from "./components/Vendor/PayoutsHistory";
@@ -66,6 +63,9 @@ import CreateDiscount from "./components/Vendor/CreateDiscount";
 import VendorHelp from "./components/Vendor/VendorHelp";
 import VendorChangePassword from "./components/Vendor/VendorChangePassword";
 import VendorStore from "./components/Vendor/VendorStore";
+
+// ⭐ NEW
+import CreateShop from "./components/Vendor/CreateShop";
 
 function App() {
   return (
@@ -98,7 +98,7 @@ function App() {
             <Route path="/customer/addresses" element={<AddressList />} />
             <Route path="/customer/add-address" element={<AddAddress />} />
             <Route path="/customer/inbox" element={<CustomerInbox />} />
-            <Route path="/customer/inbox/:id" element={<ChatWindow />} /> {/* ✅ chat route */}
+            <Route path="/customer/inbox/:id" element={<ChatWindow />} />
             <Route path="/customer/wallet" element={<CustomerWallet />} />
             <Route path="/customer/coupons" element={<CustomerCoupons />} />
             <Route path="/customer/reviews" element={<CustomerReviews />} />
@@ -108,6 +108,9 @@ function App() {
             <Route path="/customer/resolution-center" element={<ResolutionCenter />} />
 
             {/* Vendor */}
+            {/* ⭐ NEW: Create Shop page */}
+            <Route path="/vendor/create" element={<CreateShop />} />
+
             <Route path="/vendor/register" element={<VendorRegister />} />
             <Route path="/vendor/login" element={<VendorLogin />} />
             <Route path="/vendor/dashboard" element={<VendorDashboard />} />
@@ -117,7 +120,7 @@ function App() {
             <Route path="/vendor/customers" element={<VendorCustomers />} />
             <Route path="/vendor/reports" element={<VendorReports />} />
             <Route path="/vendor/profile" element={<VendorProfile />} />
-            <Route path="/vendor/edit-profile" element={<VendorEditProfile />} /> {/* ✅ edit profile */}
+            <Route path="/vendor/edit-profile" element={<VendorEditProfile />} />
             <Route path="/vendor/public-profile/:vendor_id" element={<VendorPublicProfile />} />
             <Route path="/vendor/wallet" element={<VendorWallet />} />
             <Route path="/vendor/payouts" element={<PayoutsHistory />} />

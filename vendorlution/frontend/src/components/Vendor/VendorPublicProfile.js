@@ -1,92 +1,109 @@
-import { useParams, Link } from "react-router-dom";
-import logo from "../../logo.png";
+import React, { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+import api from "../../api/axios";
+import { Link } from "react-router-dom";
 
-function VendorPublicProfile() {
+export default function VendorPublicProfile() {
   const { vendor_id } = useParams();
+  const [vendor, setVendor] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [loadingV, setLoadingV] = useState(true);
+  const [loadingP, setLoadingP] = useState(true);
 
-  // Mock vendor data (replace with API later)
-  const vendor = {
-    id: vendor_id,
-    name: "TechWorld Store",
-    owner: "John Doe",
-    email: "john@techworld.com",
-    phone: "+27 65 123 4567",
-    address: "123 Market Street, Cape Town",
-    category: "Electronics",
-    description: "We sell affordable electronics and accessories.",
-    logo: logo,
-    banner: logo,
-    rating: 4.5,
-    totalProducts: 25,
-    completedOrders: 120,
-    joinDate: "2024-07-01",
-  };
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setLoadingV(true);
+        const r = await api.get(`/vendors/${vendor_id}/`);
+        if (!alive) return;
+        setVendor(r.data);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (alive) setLoadingV(false);
+      }
+    })();
+    return () => (alive = false);
+  }, [vendor_id]);
+
+  // We don’t have a vendor-filtered products endpoint on the backend yet.
+  // Workaround: pull a page of products and filter by vendor.id client-side.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setLoadingP(true);
+        const r = await api.get(`/products/?ordering=-created_at`);
+        if (!alive) return;
+        const data = r.data.results || r.data;
+        const filtered = (data || []).filter((p) => p?.vendor?.id === Number(vendor_id));
+        setProducts(filtered);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (alive) setLoadingP(false);
+      }
+    })();
+    return () => (alive = false);
+  }, [vendor_id]);
+
+  const bannerEl = useMemo(() => {
+    if (!vendor?.banner) return null;
+    return (
+      <img
+        src={vendor.banner}
+        alt={vendor.shop_name}
+        className="img-fluid rounded mb-3"
+        style={{ maxHeight: 260, objectFit: "cover", width: "100%" }}
+      />
+    );
+  }, [vendor]);
+
+  if (loadingV) return <div className="container py-5">Loading vendor...</div>;
+  if (!vendor) return <div className="container py-5">Vendor not found.</div>;
 
   return (
-    <div className="container mt-3">
-      {/* Banner */}
-      <div className="card border-0 shadow-sm mb-4">
-        <img
-          src={vendor.banner}
-          alt="Vendor Banner"
-          className="card-img-top"
-          style={{ maxHeight: "200px", objectFit: "cover" }}
-        />
-        <div className="card-body text-center">
-          <img
-            src={vendor.logo}
-            alt="Vendor Logo"
-            className="rounded-circle border mb-2"
-            width="100"
-            height="100"
-            style={{ objectFit: "cover" }}
-          />
-          <h4>{vendor.name}</h4>
-          <p className="text-muted">{vendor.category}</p>
-          <p>{vendor.description}</p>
-          <p>⭐ {vendor.rating} / 5</p>
-
-          {/* Back to Store + Chat */}
-          <div className="d-flex justify-content-center gap-2 mt-3">
-            <Link
-              to={`/vendor/store/${vendor.name
-                .toLowerCase()
-                .replace(/\s+/g, "-")}/${vendor.id}`}
-              className="btn btn-sm btn-dark"
-            >
-              <i className="fa fa-store me-1"></i> Back to Store
-            </Link>
-            <Link
-              to={`/customer/inbox?vendor=${vendor.id}`}
-              className="btn btn-sm btn-outline-dark"
-            >
-              <i className="fa fa-comments me-1"></i> Chat with Seller
-            </Link>
-          </div>
-        </div>
+    <div className="container py-5">
+      {bannerEl}
+      <div className="d-flex align-items-center justify-content-between mb-3">
+        <h3 className="fw-bold mb-0">{vendor.shop_name}</h3>
+        <div className="text-muted">Rating: {vendor.rating_avg} ★</div>
       </div>
+      <p className="text-muted">{vendor.description}</p>
 
-      {/* Vendor Info */}
-      <div className="card shadow-sm">
-        <div className="card-body">
-          <h5 className="mb-3">Vendor Information</h5>
-          <ul className="list-group list-group-flush">
-            <li className="list-group-item">Owner: {vendor.owner}</li>
-            <li className="list-group-item">Email: {vendor.email}</li>
-            <li className="list-group-item">Phone: {vendor.phone}</li>
-            <li className="list-group-item">Address: {vendor.address}</li>
-            <li className="list-group-item">
-              Completed Orders: {vendor.completedOrders}
-            </li>
-            <li className="list-group-item">
-              Total Products: {vendor.totalProducts}
-            </li>
-            <li className="list-group-item">Joined: {vendor.joinDate}</li>
-          </ul>
+      <hr className="my-4" />
+
+      <h5 className="fw-semibold mb-3">Products</h5>
+      {loadingP ? (
+        <div>Loading products…</div>
+      ) : products.length === 0 ? (
+        <div className="alert alert-info">No products from this vendor yet.</div>
+      ) : (
+        <div className="row g-3">
+          {products.map((p) => (
+            <div className="col-md-4" key={p.id}>
+              <div className="card h-100 shadow-sm">
+                {p.main_image && (
+                  <img
+                    src={p.main_image}
+                    alt={p.title}
+                    className="card-img-top"
+                    style={{ height: 180, objectFit: "cover" }}
+                  />
+                )}
+                <div className="card-body">
+                  <h6 className="fw-semibold mb-1">{p.title}</h6>
+                  <div className="small text-muted mb-2">R {p.price}</div>
+                  <Link to={`/product/${p.slug}/${p.id}`} className="btn btn-sm btn-outline-dark">
+                    View
+                  </Link>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }
-
-export default VendorPublicProfile;

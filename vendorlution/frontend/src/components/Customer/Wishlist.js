@@ -1,64 +1,41 @@
-// components/Customer/Wishlist.js
-import logo from "../../logo.png";
+import React, { useEffect, useState } from "react";
+import api from "../../api/axios";
 
-function Wishlist() {
-  const wishlist = [
-    {
-      id: 1,
-      title: "Smart Watch",
-      price: 1500,
-      vendor: "TechWorld Store",
-    },
-    {
-      id: 2,
-      title: "Sneakers",
-      price: 950,
-      vendor: "Fashion Hub",
-    },
-  ];
-
+export default function Wishlist() {
+  const [items, setItems] = useState([]);
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(true);
+  const CUSTOMER_ID = localStorage.getItem("customer_id") || "1";
+  const load = () => {
+    setLoading(true); setErr("");
+    api.get(`/wishlist/?customer_id=${CUSTOMER_ID}`)
+      .then((res) => { const list = Array.isArray(res.data) ? res.data : (res.data?.results || []); setItems(list); })
+      .catch(() => setErr("Failed to load wishlist"))
+      .finally(() => setLoading(false));
+  };
+  const remove = (id) => { api.delete(`/wishlist/${id}/`).then(load); };
+  useEffect(load, []);
+  if (loading) return <div className="container py-4">Loading…</div>;
+  if (err) return <div className="container py-4 alert alert-danger">{err}</div>;
   return (
     <div className="container py-4">
-      <h3 className="mb-4">My Wishlist</h3>
-
-      {wishlist.length > 0 ? (
+      <h3 className="mb-3">My Wishlist</h3>
+      {items.length === 0 ? <div className="text-muted">No items yet.</div> : (
         <div className="row g-3">
-          {wishlist.map((item) => (
-            <div key={item.id} className="col-6 col-md-4 col-lg-3">
-              <div className="card h-100 shadow-sm border-0">
-                <img
-                  src={logo}
-                  alt={item.title}
-                  className="card-img-top"
-                  style={{ height: "180px", objectFit: "cover" }}
-                />
-                <div className="card-body text-center">
-                  <h6 className="fw-bold mb-1">{item.title}</h6>
-                  <p className="text-muted small mb-1">R {item.price}</p>
-                  <small className="text-muted d-block mb-2">
-                    {item.vendor}
-                  </small>
-                  <div className="d-flex gap-2 justify-content-center">
-                    <button className="btn btn-sm btn-dark">
-                      <i className="fa fa-cart-plus me-1"></i> Add to Cart
-                    </button>
-                    <button className="btn btn-sm btn-outline-danger">
-                      <i className="fa fa-trash"></i>
-                    </button>
-                  </div>
+          {items.map((w) => (
+            <div key={w.id} className="col-6 col-md-4">
+              <div className="card h-100 border-0 shadow-sm">
+                {w.product?.main_image ? <img src={w.product.main_image} alt={w.product.title} className="card-img-top" style={{height:150, objectFit:"cover"}} /> : <div className="bg-light d-flex align-items-center justify-content-center" style={{height:150}}><span className="text-muted small">No image</span></div>}
+                <div className="card-body"><div className="fw-semibold">{w.product?.title}</div><div className="small text-muted">R {w.product?.price}</div></div>
+                <div className="card-footer bg-white border-0 d-flex gap-2">
+                  <a className="btn btn-sm btn-outline-dark flex-grow-1" href={`/products/${w.product?.id}`}>View</a>
+                  <button className="btn btn-sm btn-outline-danger" onClick={()=>remove(w.id)}><i className="fa fa-trash"></i></button>
                 </div>
               </div>
             </div>
           ))}
         </div>
-      ) : (
-        <div className="text-center text-muted py-5">
-          <i className="fa fa-heart fa-2x mb-2"></i>
-          <p>Your wishlist is empty.</p>
-        </div>
       )}
     </div>
   );
 }
-
-export default Wishlist;

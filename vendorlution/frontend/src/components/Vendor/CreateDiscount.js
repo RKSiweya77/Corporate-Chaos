@@ -1,81 +1,30 @@
-// components/Vendor/CreateDiscount.js
 import React, { useState } from "react";
+import api from "../../api/axios";
 
-function CreateDiscount() {
-  const [form, setForm] = useState({
-    code: "",
-    percentage: "",
-    description: "",
-    validUntil: "",
-  });
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
+export default function CreateDiscount(){
+  const vendorId = localStorage.getItem("vendor_id") || "1";
+  const [form, setForm] = useState({ name: "", percent: "", valid_from: "", valid_to: "" });
+  const [err, setErr] = useState(""); const [ok, setOk] = useState("");
+  const onChange = (e)=> setForm({ ...form, [e.target.name]: e.target.value });
+  const onSubmit = (e)=>{ e.preventDefault(); setErr(""); setOk("");
+    api.post("/discounts/", { vendor: vendorId, name: form.name, percent: form.percent, valid_from: form.valid_from, valid_to: form.valid_to })
+      .then(()=>{ setOk("Discount created"); setForm({ name:"", percent:"", valid_from:"", valid_to:"" }); })
+      .catch(()=> setErr("Failed to create discount"));
   };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    alert("Discount created (mock). API integration later.");
-  };
-
   return (
-    <div className="container py-5">
-      <div className="card shadow-sm border-0">
-        <div className="card-body">
-          <h3 className="mb-4">Create Discount</h3>
-          <form onSubmit={handleSubmit}>
-            <div className="mb-3">
-              <label className="form-label">Discount Code</label>
-              <input
-                type="text"
-                className="form-control"
-                name="code"
-                value={form.code}
-                onChange={handleChange}
-                placeholder="E.g. SUMMER20"
-              />
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Percentage (%)</label>
-              <input
-                type="number"
-                className="form-control"
-                name="percentage"
-                value={form.percentage}
-                onChange={handleChange}
-                placeholder="E.g. 20"
-              />
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Description</label>
-              <textarea
-                className="form-control"
-                rows="3"
-                name="description"
-                value={form.description}
-                onChange={handleChange}
-                placeholder="Short description"
-              />
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Valid Until</label>
-              <input
-                type="date"
-                className="form-control"
-                name="validUntil"
-                value={form.validUntil}
-                onChange={handleChange}
-              />
-            </div>
-            <button type="submit" className="btn btn-dark w-100">
-              <i className="fa fa-plus me-2"></i>Create Discount
-            </button>
-          </form>
-        </div>
-      </div>
+    <div className="container py-5" style={{maxWidth:560}}>
+      <div className="card shadow-sm border-0"><div className="card-body">
+        <h3 className="mb-4">Create Discount</h3>
+        {err && <div className="alert alert-danger">{err}</div>}
+        {ok && <div className="alert alert-success">{ok}</div>}
+        <form onSubmit={onSubmit}>
+          <div className="mb-3"><label className="form-label">Name</label><input className="form-control" name="name" value={form.name} onChange={onChange} /></div>
+          <div className="mb-3"><label className="form-label">Percent (%)</label><input type="number" className="form-control" name="percent" value={form.percent} onChange={onChange} /></div>
+          <div className="mb-3"><label className="form-label">Valid From</label><input type="datetime-local" className="form-control" name="valid_from" value={form.valid_from} onChange={onChange} /></div>
+          <div className="mb-3"><label className="form-label">Valid To</label><input type="datetime-local" className="form-control" name="valid_to" value={form.valid_to} onChange={onChange} /></div>
+          <button className="btn btn-dark w-100" type="submit"><i className="fa fa-plus me-2"></i>Create Discount</button>
+        </form>
+      </div></div>
     </div>
   );
 }
-
-export default CreateDiscount;

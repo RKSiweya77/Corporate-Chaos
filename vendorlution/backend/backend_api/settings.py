@@ -5,7 +5,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = "django-insecure-temp-key"
 DEBUG = True
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
 # Installed apps
 INSTALLED_APPS = [
@@ -19,6 +19,8 @@ INSTALLED_APPS = [
     # Third-party
     "rest_framework",
     "corsheaders",
+    # If you enable token blacklisting later:
+    # "rest_framework_simplejwt.token_blacklist",
 
     # Local
     "main",
@@ -91,12 +93,16 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Django REST Framework (No authentication for now 🚀)
+# ---------------- Django REST Framework + JWT ----------------
 REST_FRAMEWORK = {
+    # Keep public endpoints working while we roll in JWT (you can tighten later)
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
     ],
-    "DEFAULT_AUTHENTICATION_CLASSES": [],  # disable Session/JWT
+    # Enable JWT auth; views that require auth will read Authorization: Bearer <token>
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
     "DEFAULT_FILTER_BACKENDS": [
         "rest_framework.filters.OrderingFilter",
         "rest_framework.filters.SearchFilter",
@@ -105,10 +111,23 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 10,
 }
 
-# CORS (allow React frontend)
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,        # issue a new refresh token on refresh
+    "BLACKLIST_AFTER_ROTATION": False,     # set True if you enable blacklist app
+    "UPDATE_LAST_LOGIN": False,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "ALGORITHM": "HS256",
+}
+
+# ---------------- CORS (allow React frontend) ----------------
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
+# If you ever send cookies, toggle this + allow headers/origins accordingly:
+# CORS_ALLOW_CREDENTIALS = True
 
-# Dev fallback vendor (used when no auth)
+# Dev fallback vendor (used when no auth; can be removed after full auth migration)
 DEV_MODE_DEFAULT_VENDOR_ID = 1

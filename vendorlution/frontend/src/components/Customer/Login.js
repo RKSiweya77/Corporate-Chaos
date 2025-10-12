@@ -1,129 +1,45 @@
 import React, { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import logo from "../../logo.png";
 
-const Login = () => {
+export default function Login() {
   const nav = useNavigate();
-  const location = useLocation();
-  const { login, switchRole } = useAuth?.() || {};
-  const [form, setForm] = useState({ email: "", password: "", remember: true });
-  const [loading, setLoading] = useState(false);
-  const fromVendorShortcut = location.state?.from === "vendor";
+  const { search } = useLocation();
+  const { login } = useAuth();
 
-  const handleChange = (e) => {
-    const { name, type, checked, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
-  };
+  const [id, setId] = useState("");     // email or username
+  const [pw, setPw] = useState("");
+  const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
+  const next = new URLSearchParams(search).get("next") || "/";
+
+  const submit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-
-    // 🔒 Unified login (buyer by default). Vendor role can be added later.
-    // Adjust to your real API later; for now, we mock via AuthContext.
+    setError("");
     try {
-      if (login) {
-        await login({
-          email: form.email,
-          name: form.email.split("@")[0] || "User",
-          roles: ["buyer"],
-        });
-        if (switchRole) switchRole("buyer");
-      } else {
-        // Fallback if AuthContext.login isn't available (keeps dev moving)
-        localStorage.setItem(
-          "auth_fallback",
-          JSON.stringify({ isAuthenticated: true, roles: ["buyer"], activeRole: "buyer" })
-        );
-      }
-
-      // If they came here from a vendor-only action, land them on Vendor Dashboard after login
-      if (fromVendorShortcut) {
-        nav("/vendor/dashboard", { replace: true });
-      } else {
-        nav("/", { replace: true });
-      }
-    } finally {
-      setLoading(false);
+      await login(id.trim(), pw);
+      nav(next, { replace: true });
+    } catch (err) {
+      const msg = err.response?.data?.detail
+        || (typeof err.response?.data === "object" ? JSON.stringify(err.response.data) : "Login failed");
+      setError(msg);
     }
   };
 
   return (
-    <div className="container py-5 d-flex justify-content-center">
-      <div className="card shadow-sm border-0" style={{ maxWidth: 420, width: "100%" }}>
-        <div className="card-body p-4">
-          <div className="text-center mb-3">
-            <img src={logo} alt="Vendorlution" height="40" className="mb-2" />
-            <h4 className="mb-0">Welcome back</h4>
-            <div className="text-muted small">Sign in to continue</div>
-          </div>
+    <div className="container py-5" style={{ maxWidth: 520 }}>
+      <h3 className="mb-3">Sign in</h3>
+      {error && <div className="alert alert-danger">{error}</div>}
+      <form onSubmit={submit} className="card p-3 shadow-sm border-0">
+        <label className="form-label">Email or Username</label>
+        <input className="form-control mb-3" value={id} onChange={e=>setId(e.target.value)} required />
 
-          <form onSubmit={handleSubmit}>
-            <div className="mb-3">
-              <label className="form-label">Email address</label>
-              <input
-                type="email"
-                className="form-control"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="you@example.com"
-                required
-                autoFocus
-              />
-            </div>
+        <label className="form-label">Password</label>
+        <input type="password" className="form-control mb-4" value={pw} onChange={e=>setPw(e.target.value)} required />
 
-            <div className="mb-2">
-              <label className="form-label">Password</label>
-              <input
-                type="password"
-                className="form-control"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                placeholder="••••••••"
-                required
-              />
-            </div>
-
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <div className="form-check">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="remember"
-                  name="remember"
-                  checked={form.remember}
-                  onChange={handleChange}
-                />
-                <label className="form-check-label" htmlFor="remember">
-                  Remember me
-                </label>
-              </div>
-              <Link to="#" className="small">Forgot password?</Link>
-            </div>
-
-            <button type="submit" className="btn btn-dark w-100" disabled={loading}>
-              {loading ? "Signing in…" : "Sign in"}
-            </button>
-          </form>
-
-          <div className="text-center mt-3">
-            <div className="text-muted small">Don’t have an account?</div>
-            <Link to="/customer/register" className="btn btn-link">
-              Create account
-            </Link>
-          </div>
-
-          <hr />
-          <div className="small text-muted text-center">
-            One login for buyers & sellers. Start as a buyer; you can enable your shop anytime.
-          </div>
-        </div>
-      </div>
+        <button className="btn btn-dark" type="submit">Sign in</button>
+        <div className="mt-3">New here? <Link to="/customer/register">Create an account</Link></div>
+      </form>
     </div>
   );
-};
-
-export default Login;
+}

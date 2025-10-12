@@ -1,148 +1,147 @@
-// components/Vendor/VendorEditProfile.js
-import React, { useState } from "react";
-import { useVendor } from "../../context/VendorContext";
-import { useNavigate } from "react-router-dom";
+// src/components/Vendor/VendorEditProfile.js
+import { useEffect, useState } from "react";
+import api from "../../api/axios";
 
-function VendorEditProfile() {
-  const { vendor, setVendor } = useVendor();
-  const [form, setForm] = useState(vendor);
-  const nav = useNavigate();
+export default function VendorEditProfile() {
+  const [data, setData] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
-  };
-
-  const handleFileChange = (e, field) => {
-    const file = e.target.files[0];
-    if (file) {
-      const imgUrl = URL.createObjectURL(file);
-      setForm({ ...form, [field]: imgUrl });
+  const fetchMeVendor = async () => {
+    try {
+      const res = await api.get("/me/vendor/profile/");
+      setData(res.data);
+    } catch (e) {
+      setErr("Could not load vendor profile.");
     }
   };
 
-  const handleSave = () => {
-    setVendor(form); // update context
-    alert("Profile updated successfully!");
-    nav("/vendor/profile"); // redirect back
+  useEffect(() => {
+    fetchMeVendor();
+  }, []);
+
+  const onField = (key, val) => setData((d) => ({ ...d, [key]: val }));
+
+  const save = async (e) => {
+    e.preventDefault();
+    if (!data) return;
+    setErr("");
+    try {
+      setSaving(true);
+      const form = new FormData();
+      if (data.shop_name != null) form.append("shop_name", data.shop_name);
+      if (data.description != null) form.append("description", data.description);
+      if (data.address != null) form.append("address", data.address);
+      if (data._logo instanceof File) form.append("logo", data._logo);
+      if (data._banner instanceof File) form.append("banner", data._banner);
+
+      const res = await api.patch("/me/vendor/profile/", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setData(res.data); // keep latest (server-side paths)
+    } catch (e) {
+      const msg =
+        e?.response?.data?.detail ||
+        (typeof e?.response?.data === "string" ? e.response.data : null) ||
+        "Save failed.";
+      setErr(msg);
+    } finally {
+      setSaving(false);
+    }
   };
 
+  if (!data) {
+    return (
+      <div className="container py-4">
+        <p>Loading shop…</p>
+        {err && <div className="alert alert-danger mt-2">{err}</div>}
+      </div>
+    );
+  }
+
   return (
-    <div className="container py-4">
-      <h3 className="mb-4">Edit Store Profile</h3>
-      <div className="card shadow-sm border-0">
-        <div className="card-body">
-          <form>
-            <div className="mb-3">
-              <label className="form-label">Store Name</label>
-              <input
-                type="text"
-                className="form-control"
-                name="storeName"
-                value={form.storeName}
-                onChange={handleChange}
-              />
-            </div>
+    <div className="container py-4" style={{ maxWidth: 900 }}>
+      <h3 className="mb-3">Edit Shop</h3>
+      {err && <div className="alert alert-danger">{err}</div>}
 
-            <div className="mb-3">
-              <label className="form-label">Owner Name</label>
-              <input
-                type="text"
-                className="form-control"
-                name="ownerName"
-                value={form.ownerName}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label">Email</label>
-              <input
-                type="email"
-                className="form-control"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label">Phone</label>
-              <input
-                type="text"
-                className="form-control"
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label">Address</label>
-              <input
-                type="text"
-                className="form-control"
-                name="address"
-                value={form.address}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label">Category</label>
-              <select
-                className="form-select"
-                name="category"
-                value={form.category}
-                onChange={handleChange}
-              >
-                <option value="Electronics">Electronics</option>
-                <option value="Fashion">Fashion</option>
-                <option value="Books">Books</option>
-                <option value="Furniture">Furniture</option>
-                <option value="Sports">Sports</option>
-              </select>
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label">Description</label>
-              <textarea
-                className="form-control"
-                rows="3"
-                name="description"
-                value={form.description}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label">Upload Logo</label>
-              <input
-                type="file"
-                className="form-control"
-                accept="image/*"
-                onChange={(e) => handleFileChange(e, "logo")}
-              />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label">Upload Banner</label>
-              <input
-                type="file"
-                className="form-control"
-                accept="image/*"
-                onChange={(e) => handleFileChange(e, "banner")}
-              />
-            </div>
-
-            <button type="button" className="btn btn-primary" onClick={handleSave}>
-              Save Changes
-            </button>
-          </form>
+      <form className="card p-3 shadow-sm border-0" onSubmit={save}>
+        {/* Preview banner */}
+        <div className="mb-3">
+          <label className="form-label">Banner</label>
+          <div className="mb-2">
+            {data.banner ? (
+              <img src={data.banner} alt="banner" style={{ maxWidth: "100%", maxHeight: 220, objectFit: "cover" }} />
+            ) : (
+              <div className="text-muted small">No banner uploaded</div>
+            )}
+          </div>
+          <input
+            type="file"
+            className="form-control"
+            accept="image/*"
+            onChange={(e) => onField("_banner", e.target.files?.[0] || null)}
+          />
         </div>
+
+        {/* Logo */}
+        <div className="mb-3">
+          <label className="form-label">Logo</label>
+          <div className="mb-2">
+            {data.logo ? (
+              <img src={data.logo} alt="logo" style={{ height: 80, objectFit: "contain" }} />
+            ) : (
+              <div className="text-muted small">No logo uploaded</div>
+            )}
+          </div>
+          <input
+            type="file"
+            className="form-control"
+            accept="image/*"
+            onChange={(e) => onField("_logo", e.target.files?.[0] || null)}
+          />
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Shop name</label>
+          <input
+            className="form-control"
+            value={data.shop_name || ""}
+            onChange={(e) => onField("shop_name", e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Description</label>
+          <textarea
+            className="form-control"
+            rows={4}
+            value={data.description || ""}
+            onChange={(e) => onField("description", e.target.value)}
+          />
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Address</label>
+          <textarea
+            className="form-control"
+            rows={2}
+            value={data.address || ""}
+            onChange={(e) => onField("address", e.target.value)}
+            placeholder="Street, City, Country"
+          />
+        </div>
+
+        <button className="btn btn-dark" type="submit" disabled={saving}>
+          {saving ? "Saving…" : "Save Changes"}
+        </button>
+      </form>
+
+      <div className="mt-3">
+        <p className="small text-muted">
+          Manage reviews, payments, discounts, linked products and more from your vendor dashboard.
+        </p>
       </div>
     </div>
   );
 }
-
-export default VendorEditProfile;

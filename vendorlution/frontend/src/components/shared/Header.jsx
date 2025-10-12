@@ -1,19 +1,32 @@
+// src/components/shared/Header.jsx
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import logo from "../../logo.png";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 function Header() {
   const nav = useNavigate();
-  const { isAuthenticated, hasRole, addVendorRole, logout } = useAuth();
+  const { isAuthenticated, logout, getVendorId } = useAuth();
 
   const [shopMenuOpen, setShopMenuOpen] = useState(false);
   const [walletMenuOpen, setWalletMenuOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [q, setQ] = useState("");
+
+  const vendorId = useMemo(() => {
+    const v = getVendorId && getVendorId();
+    return v ? Number(v) : null;
+  }, [getVendorId]);
 
   const handleLogout = () => {
     logout();
     nav("/");
+  };
+
+  const onSearch = (e) => {
+    e.preventDefault();
+    const term = (q || "").trim();
+    nav(term ? `/search?q=${encodeURIComponent(term)}` : "/search");
   };
 
   return (
@@ -36,18 +49,20 @@ function Header() {
         </Link>
 
         {/* Searchbar */}
-        <form className="d-none d-md-flex mx-auto" style={{ width: "40%" }}>
+        <form onSubmit={onSearch} className="d-none d-md-flex mx-auto" style={{ width: "40%" }}>
           <input
             type="text"
             className="form-control"
             placeholder="Search products, vendors..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
           />
         </form>
 
         {/* Quick icons */}
         <div className="d-flex align-items-center gap-2">
-          {hasRole("vendor") && (
-            <Link to="/vendor/profile" className="btn btn-sm btn-outline-dark">
+          {vendorId && (
+            <Link to="/vendor/dashboard" className="btn btn-sm btn-outline-dark">
               <i className="fa fa-store me-1"></i> My Shop
             </Link>
           )}
@@ -65,17 +80,11 @@ function Header() {
           </Link>
           {!isAuthenticated ? (
             <>
-              <Link to="/customer/login" className="btn btn-sm btn-dark">
-                Sign in
-              </Link>
-              <Link to="/customer/register" className="btn btn-sm btn-outline-dark">
-                Register
-              </Link>
+              <Link to="/customer/login" className="btn btn-sm btn-dark">Sign in</Link>
+              <Link to="/customer/register" className="btn btn-sm btn-outline-dark">Register</Link>
             </>
           ) : (
-            <button onClick={handleLogout} className="btn btn-sm btn-outline-danger">
-              Logout
-            </button>
+            <button onClick={handleLogout} className="btn btn-sm btn-outline-danger">Logout</button>
           )}
         </div>
       </div>
@@ -86,8 +95,8 @@ function Header() {
           <h5 className="offcanvas-title">Navigation</h5>
           <button type="button" className="btn-close" data-bs-dismiss="offcanvas"></button>
         </div>
-        <div className="offcanvas-body">
 
+        <div className="offcanvas-body">
           {/* Buyer */}
           <div className="fw-bold small text-muted mb-2">Buyer</div>
           <div className="list-group mb-3">
@@ -106,18 +115,10 @@ function Header() {
             </div>
             {walletMenuOpen && (
               <div className="list-group ps-4">
-                <Link to="/customer/wallet" className="list-group-item list-group-item-action">
-                  Wallet Overview
-                </Link>
-                <Link to="/customer/wallet/deposit" className="list-group-item list-group-item-action">
-                  Deposit
-                </Link>
-                <Link to="/customer/wallet/withdraw" className="list-group-item list-group-item-action">
-                  Withdraw
-                </Link>
-                <Link to="/customer/payment-methods" className="list-group-item list-group-item-action">
-                  Payment Methods
-                </Link>
+                <Link to="/customer/wallet" className="list-group-item list-group-item-action">Wallet Overview</Link>
+                <Link to="/customer/wallet/deposit" className="list-group-item list-group-item-action">Deposit</Link>
+                <Link to="/customer/wallet/withdraw" className="list-group-item list-group-item-action">Withdraw</Link>
+                <Link to="/customer/payment-methods" className="list-group-item list-group-item-action">Payment Methods</Link>
               </div>
             )}
 
@@ -129,7 +130,7 @@ function Header() {
             </Link>
           </div>
 
-          {/* Vendor My Shop dropdown */}
+          {/* Vendor My Shop */}
           <div
             className="fw-bold small text-muted mb-2 d-flex justify-content-between align-items-center"
             onClick={() => setShopMenuOpen(!shopMenuOpen)}
@@ -140,13 +141,13 @@ function Header() {
           </div>
           {shopMenuOpen && (
             <div className="list-group mb-3">
-              {hasRole("vendor") ? (
+              {vendorId ? (
                 <>
-                  <Link to="/vendor/profile" className="list-group-item list-group-item-action">
+                  <Link to="/vendor/dashboard" className="list-group-item list-group-item-action">
                     <i className="fa fa-store me-2"></i> Shop Overview
                   </Link>
-                  <Link to="/vendor/orders" className="list-group-item list-group-item-action">
-                    <i className="fa fa-list-check me-2"></i> Orders
+                  <Link to="/vendor/edit-profile" className="list-group-item list-group-item-action">
+                    <i className="fa fa-pen-to-square me-2"></i> Edit Shop
                   </Link>
                   <Link to="/vendor/products" className="list-group-item list-group-item-action">
                     <i className="fa fa-box me-2"></i> Linked Products
@@ -174,12 +175,9 @@ function Header() {
                   </Link>
                 </>
               ) : (
-                <button
-                  onClick={addVendorRole}
-                  className="list-group-item list-group-item-action text-start"
-                >
+                <Link to={isAuthenticated ? "/vendor/create" : "/customer/login"} className="list-group-item list-group-item-action">
                   <i className="fa fa-circle-plus me-2"></i> Create Shop
-                </button>
+                </Link>
               )}
             </div>
           )}

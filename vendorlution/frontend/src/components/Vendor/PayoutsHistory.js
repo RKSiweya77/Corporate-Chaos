@@ -1,58 +1,20 @@
-// components/Vendor/PayoutsHistory.js
-import React from "react";
+import React, { useEffect, useState } from "react";
+import api from "../../api/axios";
 
-function PayoutsHistory() {
-  const payouts = [
-    { id: 1, date: "2025-01-10", amount: 1200, status: "Completed" },
-    { id: 2, date: "2025-02-05", amount: 800, status: "Pending" },
-  ];
-
+export default function PayoutsHistory(){
+  const vendorId = localStorage.getItem("vendor_id") || "1";
+  const [items, setItems] = useState([]); const [err, setErr] = useState(""); const [loading, setLoading] = useState(true);
+  useEffect(()=>{ api.get(`/payouts/?vendor_id=${vendorId}`).then(res=>setItems(Array.isArray(res.data)?res.data:(res.data?.results||[]))).catch(()=>setErr("Failed to load payouts")).finally(()=>setLoading(false)); }, [vendorId]);
   return (
     <div className="container py-5">
       <h3 className="mb-4">Payouts History</h3>
-      <div className="card shadow-sm border-0">
-        <div className="card-body">
-          <div className="table-responsive">
-            <table className="table align-middle">
-              <thead className="table-light">
-                <tr>
-                  <th>Date</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payouts.map((p) => (
-                  <tr key={p.id}>
-                    <td>{p.date}</td>
-                    <td>R {p.amount}</td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          p.status === "Completed"
-                            ? "bg-success"
-                            : "bg-warning text-dark"
-                        }`}
-                      >
-                        {p.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-                {payouts.length === 0 && (
-                  <tr>
-                    <td colSpan="3" className="text-center text-muted">
-                      No payout history found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+      {loading ? <div>Loading…</div> : err ? <div className="alert alert-danger">{err}</div> : items.length===0 ? <div className="text-muted">No payout history found.</div> : (
+        <div className="table-responsive">
+          <table className="table align-middle"><thead className="table-light"><tr><th>Date</th><th>Amount</th><th>Status</th></tr></thead><tbody>
+            {items.map(p=>(<tr key={p.id}><td>{new Date(p.created_at).toLocaleString()}</td><td>R {p.amount}</td><td><span className={`badge ${p.status==="completed"?"bg-success":p.status==="processing"?"bg-warning text-dark":p.status==="failed"?"bg-danger":"bg-secondary"}`}>{p.status}</span></td></tr>))}
+          </tbody></table>
         </div>
-      </div>
+      )}
     </div>
   );
 }
-
-export default PayoutsHistory;

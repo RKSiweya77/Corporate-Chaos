@@ -1,85 +1,48 @@
-// components/Customer/Cart.js
-import { Link } from "react-router-dom";
-import logo from "../../logo.png";
+import React, { useEffect, useState } from "react";
+import api from "../../api/axios";
 
-function Cart() {
-  const cartItems = [
-    { id: 1, title: "Wireless Headphones", price: 1200, qty: 1, vendor: "TechWorld" },
-    { id: 2, title: "Denim Jacket", price: 800, qty: 2, vendor: "Fashion Hub" },
-  ];
-
-  const total = cartItems.reduce((sum, i) => sum + i.price * i.qty, 0);
-
+export default function Cart() {
+  const CUSTOMER_ID = localStorage.getItem("customer_id") || "1";
+  const [cart, setCart] = useState(null);
+  const [err, setErr] = useState(""); const [loading, setLoading] = useState(true);
+  const load = () => { setLoading(true); setErr(""); api.get(`/cart/?customer_id=${CUSTOMER_ID}`).then(res=>setCart(res.data)).catch(()=>setErr("Failed to load cart")).finally(()=>setLoading(false)); };
+  const updateQty = (itemId, quantity) => { api.patch(`/cart/items/${itemId}/`, { quantity }).then(load); };
+  const removeItem = (itemId) => { api.delete(`/cart/items/${itemId}/`).then(load); };
+  useEffect(load, []);
+  if (loading) return <div className="container py-4">Loading…</div>;
+  if (err) return <div className="container py-4 alert alert-danger">{err}</div>;
+  if (!cart) return null;
+  const items = cart.items || [];
+  const total = items.reduce((s, it) => s + parseFloat(it.price_snapshot || it.product?.price || 0) * it.quantity, 0);
   return (
     <div className="container py-4">
-      <h3 className="mb-4">My Cart</h3>
-
-      {cartItems.length > 0 ? (
-        <>
-          <div className="table-responsive shadow-sm rounded">
-            <table className="table align-middle">
-              <thead className="table-dark text-white">
-                <tr>
-                  <th>Product</th>
-                  <th>Price</th>
-                  <th>Qty</th>
-                  <th>Total</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {cartItems.map((item) => (
-                  <tr key={item.id}>
+      <h3 className="mb-3">My Cart</h3>
+      {items.length === 0 ? <div className="text-muted">Cart is empty.</div> : (
+        <div className="table-responsive">
+          <table className="table align-middle">
+            <thead className="table-light"><tr><th>Product</th><th style={{width:120}}>Qty</th><th style={{width:160}}>Price</th><th style={{width:60}}></th></tr></thead>
+            <tbody>
+              {items.map((it)=>{
+                const price = parseFloat(it.price_snapshot || it.product?.price || 0);
+                return (
+                  <tr key={it.id}>
                     <td>
                       <div className="d-flex align-items-center">
-                        <img
-                          src={logo}
-                          alt={item.title}
-                          width="60"
-                          height="60"
-                          className="me-3 rounded border"
-                          style={{ objectFit: "cover" }}
-                        />
-                        <div>
-                          <p className="mb-0 fw-semibold">{item.title}</p>
-                          <small className="text-muted">Sold by {item.vendor}</small>
-                        </div>
+                        {it.product?.main_image ? <img src={it.product.main_image} alt="" style={{height:48,width:48,objectFit:"cover"}} className="rounded me-2" /> : <div className="rounded me-2 bg-light" style={{height:48,width:48}}/>}
+                        <div><div className="fw-semibold">{it.product?.title}</div><div className="small text-muted">R {price.toFixed(2)}</div></div>
                       </div>
                     </td>
-                    <td className="fw-semibold">R {item.price}</td>
-                    <td>{item.qty}</td>
-                    <td className="fw-semibold">R {item.price * item.qty}</td>
-                    <td>
-                      <button className="btn btn-sm btn-outline-danger">
-                        <i className="fa fa-trash"></i>
-                      </button>
-                    </td>
+                    <td><input type="number" className="form-control" min="1" value={it.quantity} onChange={(e)=>updateQty(it.id, parseInt(e.target.value||"1",10))} /></td>
+                    <td>R {(price * it.quantity).toFixed(2)}</td>
+                    <td><button className="btn btn-sm btn-outline-danger" onClick={()=>removeItem(it.id)}><i className="fa fa-trash"></i></button></td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Checkout summary card */}
-          <div className="card shadow-sm border-0 mt-4">
-            <div className="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center">
-              <h5 className="mb-3 mb-md-0">
-                Total: <span className="fw-bold">R {total}</span>
-              </h5>
-              <Link to="/checkout" className="btn btn-dark btn-lg">
-                Proceed to Checkout <i className="fa fa-arrow-right ms-2"></i>
-              </Link>
-            </div>
-          </div>
-        </>
-      ) : (
-        <div className="text-center py-5 text-muted">
-          <i className="fa fa-shopping-cart fa-3x mb-3"></i>
-          <p className="fw-semibold">Your cart is empty</p>
+                );
+              })}
+              <tr><td colSpan="2" className="text-end fw-semibold">Total</td><td colSpan="2" className="fw-bold">R {total.toFixed(2)}</td></tr>
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   );
 }
-
-export default Cart;
