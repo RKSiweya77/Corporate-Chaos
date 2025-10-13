@@ -1,22 +1,47 @@
 // src/components/shared/Header.jsx
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import logo from "../../logo.png";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import api from "../../api/axios";
 
 function Header() {
   const nav = useNavigate();
-  const { isAuthenticated, logout, getVendorId } = useAuth();
+  const location = useLocation();
+
+  // From AuthContext (existing)
+  const { isAuthenticated, hasRole, createVendor, logout } = useAuth();
 
   const [shopMenuOpen, setShopMenuOpen] = useState(false);
   const [walletMenuOpen, setWalletMenuOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [q, setQ] = useState("");
 
-  const vendorId = useMemo(() => {
-    const v = getVendorId && getVendorId();
-    return v ? Number(v) : null;
-  }, [getVendorId]);
+  // ✅ Local flag that we recompute from /auth/me so the UI updates right after creation
+  const [hasVendor, setHasVendor] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function refreshHasVendor() {
+      if (!isAuthenticated) {
+        setHasVendor(false);
+        return;
+      }
+      try {
+        const res = await api.get("/auth/me/");
+        if (!alive) return;
+        setHasVendor(!!res.data.vendor_id);
+      } catch {
+        if (!alive) return;
+        setHasVendor(false);
+      }
+    }
+
+    refreshHasVendor();
+    // re-check when route changes (helps right after finishing the create flow)
+    // and whenever auth state toggles
+  }, [isAuthenticated, location.pathname]);
 
   const handleLogout = () => {
     logout();
@@ -28,6 +53,13 @@ function Header() {
     const term = (q || "").trim();
     nav(term ? `/search?q=${encodeURIComponent(term)}` : "/search");
   };
+
+  const handleCreateShop = async () => {
+    // Redirect to the full Create Shop page (multipart form)
+    nav("/vendor/create");
+  };
+
+  const showMyShop = hasVendor || hasRole("vendor");
 
   return (
     <nav className="navbar navbar-light bg-white border-bottom sticky-top">
@@ -61,7 +93,7 @@ function Header() {
 
         {/* Quick icons */}
         <div className="d-flex align-items-center gap-2">
-          {vendorId && (
+          {showMyShop && (
             <Link to="/vendor/dashboard" className="btn btn-sm btn-outline-dark">
               <i className="fa fa-store me-1"></i> My Shop
             </Link>
@@ -80,11 +112,17 @@ function Header() {
           </Link>
           {!isAuthenticated ? (
             <>
-              <Link to="/customer/login" className="btn btn-sm btn-dark">Sign in</Link>
-              <Link to="/customer/register" className="btn btn-sm btn-outline-dark">Register</Link>
+              <Link to="/customer/login" className="btn btn-sm btn-dark">
+                Sign in
+              </Link>
+              <Link to="/customer/register" className="btn btn-sm btn-outline-dark">
+                Register
+              </Link>
             </>
           ) : (
-            <button onClick={handleLogout} className="btn btn-sm btn-outline-danger">Logout</button>
+            <button onClick={handleLogout} className="btn btn-sm btn-outline-danger">
+              Logout
+            </button>
           )}
         </div>
       </div>
@@ -95,7 +133,6 @@ function Header() {
           <h5 className="offcanvas-title">Navigation</h5>
           <button type="button" className="btn-close" data-bs-dismiss="offcanvas"></button>
         </div>
-
         <div className="offcanvas-body">
           {/* Buyer */}
           <div className="fw-bold small text-muted mb-2">Buyer</div>
@@ -115,10 +152,18 @@ function Header() {
             </div>
             {walletMenuOpen && (
               <div className="list-group ps-4">
-                <Link to="/customer/wallet" className="list-group-item list-group-item-action">Wallet Overview</Link>
-                <Link to="/customer/wallet/deposit" className="list-group-item list-group-item-action">Deposit</Link>
-                <Link to="/customer/wallet/withdraw" className="list-group-item list-group-item-action">Withdraw</Link>
-                <Link to="/customer/payment-methods" className="list-group-item list-group-item-action">Payment Methods</Link>
+                <Link to="/customer/wallet" className="list-group-item list-group-item-action">
+                  Wallet Overview
+                </Link>
+                <Link to="/customer/wallet/deposit" className="list-group-item list-group-item-action">
+                  Deposit
+                </Link>
+                <Link to="/customer/wallet/withdraw" className="list-group-item list-group-item-action">
+                  Withdraw
+                </Link>
+                <Link to="/customer/payment-methods" className="list-group-item list-group-item-action">
+                  Payment Methods
+                </Link>
               </div>
             )}
 
@@ -130,7 +175,7 @@ function Header() {
             </Link>
           </div>
 
-          {/* Vendor My Shop */}
+          {/* Vendor My Shop dropdown */}
           <div
             className="fw-bold small text-muted mb-2 d-flex justify-content-between align-items-center"
             onClick={() => setShopMenuOpen(!shopMenuOpen)}
@@ -141,13 +186,13 @@ function Header() {
           </div>
           {shopMenuOpen && (
             <div className="list-group mb-3">
-              {vendorId ? (
+              {showMyShop ? (
                 <>
                   <Link to="/vendor/dashboard" className="list-group-item list-group-item-action">
                     <i className="fa fa-store me-2"></i> Shop Overview
                   </Link>
-                  <Link to="/vendor/edit-profile" className="list-group-item list-group-item-action">
-                    <i className="fa fa-pen-to-square me-2"></i> Edit Shop
+                  <Link to="/vendor/orders" className="list-group-item list-group-item-action">
+                    <i className="fa fa-list-check me-2"></i> Orders
                   </Link>
                   <Link to="/vendor/products" className="list-group-item list-group-item-action">
                     <i className="fa fa-box me-2"></i> Linked Products
@@ -175,9 +220,12 @@ function Header() {
                   </Link>
                 </>
               ) : (
-                <Link to={isAuthenticated ? "/vendor/create" : "/customer/login"} className="list-group-item list-group-item-action">
+                <button
+                  onClick={handleCreateShop}
+                  className="list-group-item list-group-item-action text-start"
+                >
                   <i className="fa fa-circle-plus me-2"></i> Create Shop
-                </Link>
+                </button>
               )}
             </div>
           )}

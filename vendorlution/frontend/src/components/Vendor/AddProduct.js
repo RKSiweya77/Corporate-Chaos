@@ -1,129 +1,188 @@
-import React, { useState, useEffect } from "react";
-import api from "../../api/axios";
-import { useAuth } from "../../context/AuthContext";
+// src/pages/vendor/AddProduct.js
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api, { postMultipart } from "../../api/axios";
 
 export default function AddProduct() {
-  const { getVendorId } = useAuth();
-  const [categories, setCategories] = useState([]);
-  const [form, setForm] = useState({
-    title: "",
-    detail: "",
-    price: "",
-    stock: "",
-    category: "",
-    main_image: null,
-  });
-  const [loading, setLoading] = useState(false);
   const nav = useNavigate();
 
+  // form fields
+  const [title, setTitle] = useState("");
+  const [detail, setDetail] = useState("");
+  const [price, setPrice] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [image, setImage] = useState(null);
+
+  // aux
+  const [categories, setCategories] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  // load categories once
   useEffect(() => {
-    api.get("/categories/all/").then((res) => setCategories(res.data));
+    let alive = true;
+    (async () => {
+      try {
+        const res = await api.get("/categories/all/");
+        if (!alive) return;
+        setCategories(res.data || []);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    setForm({ ...form, [name]: files ? files[0] : value });
-  };
-
-  const handleSubmit = async (e) => {
+  async function handleSubmit(e) {
     e.preventDefault();
-    const vendorId = getVendorId();
-    if (!vendorId) return alert("Vendor not found. Please create your shop first.");
+    setError("");
+
+    if (!title.trim()) return setError("Title is required");
+    if (!price || isNaN(Number(price))) return setError("Price must be a number");
+    if (!categoryId) return setError("Select a category");
+    if (!image) return setError("Choose a product image");
+
+    setSubmitting(true);
     try {
-      setLoading(true);
-      const data = new FormData();
-      Object.entries(form).forEach(([k, v]) => data.append(k, v));
-      data.append("vendor", vendorId);
-      const res = await api.post("/products/", data, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      alert("Product added successfully!");
+      // 1) find my vendor id
+      const me = await api.get("/auth/me/");
+      const vendorId = me?.data?.vendor_id;
+      if (!vendorId) {
+        setSubmitting(false);
+        return setError("You need a shop before adding products.");
+      }
+
+      // 2) compose multipart body
+      const fd = new FormData();
+      fd.append("title", title.trim());
+      fd.append("detail", detail.trim());
+      fd.append("price", String(price));
+      fd.append("category", String(categoryId));
+      fd.append("vendor", String(vendorId));   // backend ProductCreateSerializer accepts this
+      fd.append("is_active", "true");
+      if (image) fd.append("image", image);
+
+      // 3) submit
+      const res = await postMultipart("/products/", fd);
+      // go to vendor products list or dashboard
       nav("/vendor/products");
     } catch (err) {
       console.error(err);
-      alert("Failed to add product.");
-    } finally {
-      setLoading(false);
+      // try to surface DRF error details if present
+      let msg = "Failed to add product.";
+      if (err?.response?.data) {
+        try {
+          msg =
+            typeof err.response.data === "string"
+              ? err.response.data
+              : JSON.stringify(err.response.data);
+        } catch {}
+      }
+      setError(msg);
+      setSubmitting(false);
     }
-  };
+  }
 
   return (
-    <div className="container py-5" style={{ maxWidth: 600 }}>
-      <h3 className="fw-bold mb-4">Add New Product</h3>
-      <form onSubmit={handleSubmit} className="card p-4 shadow-sm border-0">
+    <div className="container py-4">
+      <h3 className="mb-3">
+        <i className="fa fa-box me-2" />
+        Add Product
+      </h3>
+
+      {error && (
+        <div className="alert alert-danger">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="card p-3">
         <div className="mb-3">
-          <label className="form-label">Title</label>
+          <label className="form-label">Title *</label>
           <input
-            name="title"
-            value={form.title}
-            onChange={handleChange}
             className="form-control"
-            required
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. iPhone 12 (64GB)"
           />
         </div>
+
         <div className="mb-3">
           <label className="form-label">Description</label>
           <textarea
-            name="detail"
-            rows="3"
-            value={form.detail}
-            onChange={handleChange}
             className="form-control"
-          ></textarea>
-        </div>
-        <div className="mb-3">
-          <label className="form-label">Category</label>
-          <select
-            name="category"
-            value={form.category}
-            onChange={handleChange}
-            className="form-select"
-          >
-            <option value="">Select Category</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="mb-3 d-flex gap-3">
-          <div className="flex-fill">
-            <label className="form-label">Price</label>
-            <input
-              type="number"
-              name="price"
-              value={form.price}
-              onChange={handleChange}
-              className="form-control"
-              required
-            />
-          </div>
-          <div className="flex-fill">
-            <label className="form-label">Stock</label>
-            <input
-              type="number"
-              name="stock"
-              value={form.stock}
-              onChange={handleChange}
-              className="form-control"
-              required
-            />
-          </div>
-        </div>
-        <div className="mb-3">
-          <label className="form-label">Main Image</label>
-          <input
-            type="file"
-            name="main_image"
-            className="form-control"
-            onChange={handleChange}
+            rows={4}
+            value={detail}
+            onChange={(e) => setDetail(e.target.value)}
+            placeholder="Tell buyers about the product..."
           />
         </div>
-        <button className="btn btn-dark" disabled={loading}>
-          {loading ? "Saving..." : "Add Product"}
-        </button>
+
+        <div className="row g-3">
+          <div className="col-md-4">
+            <label className="form-label">Price (ZAR) *</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              className="form-control"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="0.00"
+            />
+          </div>
+          <div className="col-md-8">
+            <label className="form-label">Category *</label>
+            <select
+              className="form-select"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+            >
+              <option value="">Select category…</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-3">
+          <label className="form-label">Image *</label>
+          <input
+            type="file"
+            accept="image/*"
+            className="form-control"
+            onChange={(e) => setImage(e.target.files?.[0] ?? null)}
+          />
+          {image && (
+            <div className="mt-2">
+              <img
+                src={URL.createObjectURL(image)}
+                alt="preview"
+                style={{ height: 120, objectFit: "cover" }}
+                className="rounded"
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 d-flex gap-2">
+          <button className="btn btn-dark" disabled={submitting}>
+            {submitting ? "Saving…" : "Add Product"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            onClick={() => nav("/vendor/dashboard")}
+            disabled={submitting}
+          >
+            Cancel
+          </button>
+        </div>
       </form>
     </div>
   );
