@@ -1,25 +1,40 @@
-// components/Customer/CustomerInbox.js
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import logo from "../../logo.png";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import api from "../../api/axios";
 
-function CustomerInbox() {
-  const [conversations] = useState([
-    {
-      id: 1,
-      vendor: "TechWorld",
-      lastMessage: "Your order has shipped 🚚",
-      time: "10:45 AM",
-      unread: true,
-    },
-    {
-      id: 2,
-      vendor: "Fashion Hub",
-      lastMessage: "New arrivals in store! 👗",
-      time: "Yesterday",
-      unread: false,
-    },
-  ]);
+export default function CustomerInbox() {
+  const { search } = useLocation();
+  const vendorParam = new URLSearchParams(search).get("vendor"); // optional deep-link
+  const productParam = new URLSearchParams(search).get("product");
+
+  const [convos, setConvos] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // If user arrives with ?vendor=ID, ensure a conversation exists
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setLoading(true);
+        if (vendorParam) {
+          await api.post("/conversations/", { vendor_id: Number(vendorParam) }).catch(() => {});
+        }
+        const r = await api.get("/conversations/");
+        if (!alive) return;
+        const data = Array.isArray(r.data) ? r.data : r.data?.results || [];
+        setConvos(data);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => (alive = false);
+  }, [vendorParam]);
+
+  const empty = useMemo(() => convos.length === 0, [convos]);
+
+  if (loading) return <div className="container py-4">Loading…</div>;
 
   return (
     <div className="container py-4">
@@ -27,49 +42,33 @@ function CustomerInbox() {
 
       <div className="card shadow-sm border-0">
         <div className="list-group list-group-flush">
-          {conversations.map((c) => (
-            <Link
-              key={c.id}
-              to={`/customer/inbox/${c.id}`}
-              className="list-group-item list-group-item-action d-flex align-items-center"
-            >
-              {/* Vendor avatar (placeholder logo for now) */}
-              <img
-                src={logo}
-                alt={c.vendor}
-                width="48"
-                height="48"
-                className="rounded-circle me-3 border"
-                style={{ objectFit: "cover" }}
-              />
-
-              {/* Message content */}
-              <div className="flex-grow-1">
-                <div className="d-flex justify-content-between">
-                  <h6 className={`mb-0 ${c.unread ? "fw-bold" : ""}`}>
-                    {c.vendor}
-                  </h6>
-                  <small className="text-muted">{c.time}</small>
+          {empty ? (
+            <div className="list-group-item text-muted">No conversations yet.</div>
+          ) : (
+            convos.map((c) => (
+              <Link
+                key={c.id}
+                to={`/customer/inbox/${c.id}${productParam ? `?product=${productParam}` : ""}`}
+                className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+              >
+                <div>
+                  <div className="fw-semibold">
+                    {c?.vendor?.shop_name || `Vendor #${c.vendor?.id || "-"}`}
+                  </div>
+                  <div className="small text-muted">
+                    Buyer: {c?.buyer?.user?.username || "me"} &middot; Conversation #{c.id}
+                  </div>
                 </div>
-                <p
-                  className={`mb-0 small ${
-                    c.unread ? "fw-semibold text-dark" : "text-muted"
-                  }`}
-                >
-                  {c.lastMessage}
-                </p>
-              </div>
-
-              {/* Unread indicator */}
-              {c.unread && (
-                <span className="badge bg-danger rounded-pill ms-2">New</span>
-              )}
-            </Link>
-          ))}
+                <small className="text-muted">
+                  {c.last_message_at
+                    ? new Date(c.last_message_at).toLocaleString()
+                    : new Date(c.created_at).toLocaleString()}
+                </small>
+              </Link>
+            ))
+          )}
         </div>
       </div>
     </div>
   );
 }
-
-export default CustomerInbox;

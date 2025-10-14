@@ -2,8 +2,10 @@ from rest_framework import generics, filters, permissions, status, serializers
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.contrib.auth.models import User
+from django.db import transaction as db_tx
+from decimal import Decimal
 
 from .models import (
     ProductCategory,
@@ -17,13 +19,14 @@ from .models import (
     Discount,
     Conversation, Message,
     PaymentMethod,
+    CustomerAddress, Notification, SupportTicket, ResolutionCase,
 )
 from .serializers import (
     # Public/catalog
     ProductCategorySerializer,
     VendorProfileSerializer,
     VendorLiteSerializer,
-    VendorProfileWriteSerializer,  # accepts multipart for create/edit
+    VendorProfileWriteSerializer,
     ProductListSerializer,
     ProductDetailSerializer,
     ProductCreateSerializer,
@@ -36,12 +39,15 @@ from .serializers import (
     DiscountSerializer, DiscountCreateSerializer,
     ConversationSerializer, MessageSerializer, PaymentMethodSerializer,
 
+    # Extra stateful
+    CustomerAddressSerializer, NotificationSerializer, SupportTicketSerializer, ResolutionCaseSerializer,
+
     # Auth
     RegisterSerializer, MeSerializer, UserPublicSerializer,
 )
 
 # ============================================================
-# Public Endpoints (No auth required) — Catalog & Ratings
+# Public Endpoints — Catalog & Ratings
 # ============================================================
 
 # --------- Categories ---------
@@ -99,9 +105,6 @@ class ProductPopularListView(generics.ListAPIView):
 
 # --------- Vendors ---------
 class VendorFeaturedListView(generics.ListAPIView):
-    """
-    Featured vendors (best rating). Public list -> only active vendors.
-    """
     serializer_class = VendorProfileSerializer
     pagination_class = None
 
@@ -111,9 +114,6 @@ class VendorFeaturedListView(generics.ListAPIView):
 
 
 class VendorListView(generics.ListAPIView):
-    """
-    Public list of vendors -> only active vendors.
-    """
     queryset = VendorProfile.objects.filter(is_active=True).order_by("shop_name")
     serializer_class = VendorProfileSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -122,31 +122,40 @@ class VendorListView(generics.ListAPIView):
 
 
 class VendorAllView(generics.ListAPIView):
-    """
-    Plain vendors list (no pagination) for dropdowns -> only active vendors.
-    """
     queryset = VendorProfile.objects.filter(is_active=True).order_by("shop_name")
     serializer_class = VendorLiteSerializer
     pagination_class = None
 
 
 class VendorDetailView(generics.RetrieveAPIView):
-    """
-    GET /api/vendors/<pk>/
-    Allow fetching ANY vendor by id (active or not) so owners can load their
-    dashboard even if the shop is temporarily inactive.
-    Public listing endpoints above still filter by is_active=True.
-    """
-    queryset = VendorProfile.objects.all()
+    queryset = VendorProfile.objects.filter(is_active=True)
     serializer_class = VendorProfileSerializer
     lookup_field = "pk"
 
 
+class VendorBySlugView(generics.RetrieveAPIView):
+    queryset = VendorProfile.objects.filter(is_active=True)
+    serializer_class = VendorProfileSerializer
+    lookup_field = "slug"
+
+
 # --------- Ratings ---------
 class ProductRatingListCreateView(generics.ListCreateAPIView):
-    permission_classes = [permissions.AllowAny]
+    """
+    GET: list ratings (public)
+    POST: create rating (auth) — customer is taken from request.user
+    """
     queryset = ProductRating.objects.all().order_by("-created_at")
     serializer_class = ProductRatingSerializer
+
+    def get_permissions(self):
+        if self.request.method.lower() == "post":
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
+
+    def perform_create(self, serializer):
+        customer, _ = CustomerProfile.objects.get_or_create(user=self.request.user)
+        serializer.save(customer=customer)
 
 
 # ============================================================
@@ -178,14 +187,34 @@ class MeView(APIView):
         }
         return Response(data)
 
+    def patch(self, request):
+        """
+        Update basic user fields and customer.mobile
+        Body: {first_name?, last_name?, email?, mobile?}
+        """
+        user = request.user
+        customer, _ = CustomerProfile.objects.get_or_create(user=user)
+        first = request.data.get("first_name")
+        last = request.data.get("last_name")
+        email = request.data.get("email")
+        mobile = request.data.get("mobile")
+
+        if first is not None:
+            user.first_name = first
+        if last is not None:
+            user.last_name = last
+        if email is not None:
+            user.email = email
+        user.save()
+
+        if mobile is not None:
+            customer.mobile = mobile
+            customer.save()
+
+        return self.get(request)
+
 
 class CreateVendorView(APIView):
-    """
-    POST /api/auth/create-vendor/
-    Creates a VendorProfile for the logged-in user.
-    Accepts multipart (shop_name, description, logo, banner, address).
-    New shops are created as is_active=True so they appear immediately.
-    """
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
@@ -197,16 +226,12 @@ class CreateVendorView(APIView):
 
         serializer = VendorProfileWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        # Force is_active=True on creation so the shop shows up and loads.
-        vendor = serializer.save(user=user, is_active=True)
-        return Response(
-            {"detail": "Vendor created", "vendor": VendorProfileSerializer(vendor).data},
-            status=201
-        )
+        vendor = serializer.save(user=user)
+        return Response({"detail": "Vendor created", "vendor": VendorProfileSerializer(vendor).data}, status=201)
 
 
 # ============================================================
-# Stateful Endpoints (JWT required)
+# Stateful helpers
 # ============================================================
 
 def _get_customer(user):
@@ -361,6 +386,38 @@ class MyTransactionsView(generics.ListAPIView):
         return Transaction.objects.filter(wallet_id=wallet_id).select_related("wallet").order_by("-created_at")
 
 
+class WalletDepositView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        amount = Decimal(str(request.data.get("amount") or "0"))
+        if amount <= 0:
+            return Response({"detail": "Invalid amount"}, status=400)
+        wallet_type = request.data.get("type") or "customer"
+        wallet, _ = Wallet.objects.get_or_create(user=request.user, type=wallet_type)
+        wallet.balance += amount
+        wallet.save()
+        Transaction.objects.create(wallet=wallet, kind="credit", amount=amount, description="Deposit")
+        return Response(WalletSerializer(wallet).data, status=201)
+
+
+class WalletWithdrawView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        amount = Decimal(str(request.data.get("amount") or "0"))
+        if amount <= 0:
+            return Response({"detail": "Invalid amount"}, status=400)
+        wallet_type = request.data.get("type") or "customer"
+        wallet, _ = Wallet.objects.get_or_create(user=request.user, type=wallet_type)
+        if wallet.balance < amount:
+            return Response({"detail": "Insufficient balance"}, status=400)
+        wallet.balance -= amount
+        wallet.save()
+        Transaction.objects.create(wallet=wallet, kind="debit", amount=amount, description="Withdrawal")
+        return Response(WalletSerializer(wallet).data, status=201)
+
+
 # ---------- Payouts ----------
 class MyPayoutsView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -446,3 +503,151 @@ class ConversationMessagesView(generics.ListCreateAPIView):
             raise permissions.PermissionDenied("Not a participant")
         msg = serializer.save(sender=user)
         Conversation.objects.filter(pk=msg.conversation_id).update(last_message_at=msg.created_at)
+
+
+# ---------- Addresses ----------
+class MyAddressListCreateView(generics.ListCreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CustomerAddressSerializer
+
+    def get_queryset(self):
+        customer = _get_customer(self.request.user)
+        return CustomerAddress.objects.filter(customer=customer).order_by("-is_default", "-created_at")
+
+    def perform_create(self, serializer):
+        customer = _get_customer(self.request.user)
+        obj = serializer.save(customer=customer)
+        if obj.is_default:
+            CustomerAddress.objects.filter(customer=customer).exclude(pk=obj.pk).update(is_default=False)
+
+
+class MyAddressDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CustomerAddressSerializer
+
+    def get_queryset(self):
+        customer = _get_customer(self.request.user)
+        return CustomerAddress.objects.filter(customer=customer)
+
+    def perform_update(self, serializer):
+        obj = serializer.save()
+        if obj.is_default:
+            CustomerAddress.objects.filter(customer=obj.customer).exclude(pk=obj.pk).update(is_default=False)
+
+
+# ---------- Notifications ----------
+class MyNotificationsView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = NotificationSerializer
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user).order_by("-created_at")
+
+
+class NotificationMarkReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            notif = Notification.objects.get(pk=pk, user=request.user)
+        except Notification.DoesNotExist:
+            return Response({"detail": "Not found"}, status=404)
+        notif.is_read = True
+        notif.save()
+        return Response({"detail": "ok"})
+
+
+# ---------- Support ----------
+class MySupportTicketsView(generics.ListCreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = SupportTicketSerializer
+
+    def get_queryset(self):
+        return SupportTicket.objects.filter(user=self.request.user).order_by("-created_at")
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+# ---------- Resolution Center ----------
+class MyResolutionCasesView(generics.ListCreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ResolutionCaseSerializer
+
+    def get_queryset(self):
+        return ResolutionCase.objects.filter(opened_by=self.request.user).select_related("order").order_by("-created_at")
+
+    def perform_create(self, serializer):
+        serializer.save(opened_by=self.request.user)
+
+
+# ---------- Checkout ----------
+class CheckoutView(APIView):
+    """
+    POST /api/checkout/
+    Body:
+    {
+      "delivery_method": "pargo"|"courier"|"postnet"|"pickup",
+      "payment_method": "wallet"|"ozow"|"mobicred",
+      "protection_fee": number,
+      "shipping_fee": number,
+      "address_snapshot": string
+    }
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        customer = _get_customer(user)
+        cart, _ = Cart.objects.get_or_create(customer=customer)
+        items = list(CartItem.objects.select_related("product").filter(cart=cart))
+        if not items:
+            return Response({"detail": "Cart is empty"}, status=400)
+
+        delivery_method = request.data.get("delivery_method") or "pargo"
+        payment_method = request.data.get("payment_method") or "wallet"
+        protection_fee = Decimal(str(request.data.get("protection_fee") or "0"))
+        shipping_fee = Decimal(str(request.data.get("shipping_fee") or "0"))
+        address_snapshot = request.data.get("address_snapshot") or ""
+
+        subtotal = sum((i.product.price * i.quantity) for i in items)
+        total_amount = subtotal + protection_fee + shipping_fee
+
+        with db_tx.atomic():
+            order = Order.objects.create(
+                customer=customer,
+                status=Order.Status.PENDING,
+                total_amount=total_amount,
+                delivery_method=delivery_method,
+                shipping_fee=shipping_fee,
+                protection_fee=protection_fee,
+                shipping_address_snapshot=address_snapshot,
+            )
+            for i in items:
+                OrderItem.objects.create(
+                    order=order,
+                    product=i.product,
+                    quantity=i.quantity,
+                    price_snapshot=i.product.price,
+                )
+
+            if payment_method == "wallet":
+                wallet, _ = Wallet.objects.get_or_create(user=user, type="customer")
+                if wallet.balance < total_amount:
+                    raise serializers.ValidationError("Insufficient wallet balance.")
+                wallet.balance -= total_amount
+                wallet.save()
+                Transaction.objects.create(
+                    wallet=wallet,
+                    kind="debit",
+                    amount=total_amount,
+                    description=f"Order #{order.id}",
+                    reference=f"ORD-{order.id}",
+                )
+                order.status = Order.Status.PAID
+                order.save()
+
+            # clear cart
+            CartItem.objects.filter(cart=cart).delete()
+
+        return Response(OrderSerializer(order).data, status=201)

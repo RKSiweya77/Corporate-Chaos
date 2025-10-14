@@ -1,17 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../../api/axios";
 
-// Safely build an absolute media URL from DRF ImageField values (which are usually relative)
 function toMedia(url) {
   if (!url) return "";
   if (/^https?:\/\//i.test(url)) return url;
-  // api.defaults.baseURL could be "http://127.0.0.1:8000/api" or "/api"
   try {
     const base = api.defaults.baseURL || "/api";
-    const origin = base.startsWith("http")
-      ? new URL(base).origin
-      : window.location.origin;
+    const origin = base.startsWith("http") ? new URL(base).origin : window.location.origin;
     return `${origin}${url.startsWith("/") ? url : `/${url}`}`;
   } catch {
     return url;
@@ -20,12 +16,13 @@ function toMedia(url) {
 
 export default function ProductGridSection({
   title,
-  endpoint, // e.g. "/products/new/?limit=12" (relative to axios baseURL)
+  endpoint, // e.g. "/products/new/?limit=12"
   linkTo = "/products",
   count = 8,
 }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const nav = useNavigate();
 
   useEffect(() => {
     let mounted = true;
@@ -33,10 +30,8 @@ export default function ProductGridSection({
     api
       .get(endpoint)
       .then((res) => {
-        // Our views return a plain array (no pagination) for /new and /popular
-        const data = Array.isArray(res.data)
-          ? res.data
-          : res.data?.results || res.data?.data || [];
+        // /new and /popular are array responses (no pagination)
+        const data = Array.isArray(res.data) ? res.data : res.data?.results || res.data?.data || [];
         if (mounted) setItems(data.slice(0, count));
       })
       .catch((e) => console.error("Fetch error:", e))
@@ -45,6 +40,32 @@ export default function ProductGridSection({
       mounted = false;
     };
   }, [endpoint, count]);
+
+  const addToCart = async (id) => {
+    try {
+      await api.post("/me/cart/items/", { product_id: id, quantity: 1 });
+      alert("Added to cart");
+    } catch (e) {
+      if (e?.response?.status === 401) {
+        nav("/customer/login");
+      } else {
+        alert("Failed to add to cart");
+      }
+    }
+  };
+
+  const addToWishlist = async (id) => {
+    try {
+      await api.post("/me/wishlist/", { product: id });
+      alert("Added to wishlist");
+    } catch (e) {
+      if (e?.response?.status === 401) {
+        nav("/customer/login");
+      } else {
+        alert("Failed to add to wishlist");
+      }
+    }
+  };
 
   return (
     <section className="mb-4">
@@ -87,13 +108,27 @@ export default function ProductGridSection({
                     <div className="fw-semibold">{p.title}</div>
                     <div className="fw-bold">R {price}</div>
                   </div>
-                  <div className="card-footer bg-white border-0">
+                  <div className="card-footer bg-white border-0 d-flex gap-2">
                     <Link
                       to={`/product/${encodeURIComponent(p.slug || p.title)}/${p.id}`}
-                      className="btn btn-sm btn-dark w-100"
+                      className="btn btn-sm btn-outline-dark flex-fill"
                     >
-                      View Product
+                      View
                     </Link>
+                    <button
+                      className="btn btn-sm btn-dark"
+                      title="Add to cart"
+                      onClick={() => addToCart(p.id)}
+                    >
+                      <i className="fa fa-cart-plus"></i>
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline-danger"
+                      title="Add to wishlist"
+                      onClick={() => addToWishlist(p.id)}
+                    >
+                      <i className="fa fa-heart"></i>
+                    </button>
                   </div>
                 </div>
               </div>

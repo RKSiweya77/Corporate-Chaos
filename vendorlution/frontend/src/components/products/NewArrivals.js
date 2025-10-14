@@ -2,7 +2,6 @@ import React from "react";
 import ProductGridSection from "../Homepage/ProductGridSection";
 
 export default function NewArrivals() {
-  // Backend returns newest first at /api/products/new/?limit=12
   return (
     <ProductGridSection
       title="New Arrivals"

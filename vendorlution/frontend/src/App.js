@@ -131,6 +131,9 @@ function App() {
             <Route path="/vendor/help" element={<VendorHelp />} />
             <Route path="/vendor/change-password" element={<VendorChangePassword />} />
             <Route path="/vendor/store/:vendor_slug/:vendor_id" element={<VendorStore />} />
+
+            {/* 👇 Friendly slug-only public route — must be last in /vendor/* to avoid catching others */}
+            <Route path="/vendor/:vendor_slug" element={<VendorPublicProfile />} />
           </Routes>
         </main>
         <Footer />

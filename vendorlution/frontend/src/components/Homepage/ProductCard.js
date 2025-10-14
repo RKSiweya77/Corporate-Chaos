@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../../api/axios";
 
@@ -7,22 +7,37 @@ function toMedia(url) {
   if (/^https?:\/\//i.test(url)) return url;
   try {
     const base = api.defaults.baseURL || "/api";
-    const origin = base.startsWith("http")
-      ? new URL(base).origin
-      : window.location.origin;
+    const origin = base.startsWith("http") ? new URL(base).origin : window.location.origin;
     return `${origin}${url.startsWith("/") ? url : `/${url}`}`;
   } catch {
     return url;
   }
 }
 
-/**
- * Optional standalone card (not required by sections above,
- * but keeping it in case other parts of your UI import it).
- */
-function ProductCard({ product }) {
+export default function ProductCard({ product }) {
+  const nav = useNavigate();
   const img = toMedia(product?.main_image);
   const price = Number(product?.price ?? 0).toFixed(2);
+
+  const addToCart = async () => {
+    try {
+      await api.post("/me/cart/items/", { product_id: product.id, quantity: 1 });
+      alert("Added to cart");
+    } catch (e) {
+      if (e?.response?.status === 401) nav("/customer/login");
+      else alert("Failed to add to cart");
+    }
+  };
+
+  const addToWishlist = async () => {
+    try {
+      await api.post("/me/wishlist/", { product: product.id });
+      alert("Added to wishlist");
+    } catch (e) {
+      if (e?.response?.status === 401) nav("/customer/login");
+      else alert("Failed to add to wishlist");
+    }
+  };
 
   return (
     <motion.div
@@ -32,9 +47,7 @@ function ProductCard({ product }) {
     >
       <div className="card h-100 shadow-sm border-0">
         <Link
-          to={`/product/${encodeURIComponent(product?.slug || product?.title)}/${
-            product?.id
-          }`}
+          to={`/product/${encodeURIComponent(product?.slug || product?.title)}/${product?.id}`}
           className="text-decoration-none"
         >
           {img ? (
@@ -62,10 +75,10 @@ function ProductCard({ product }) {
           <h6 className="fw-bold mb-1 text-dark">{product?.title}</h6>
           <p className="text-muted small mb-2">R {price}</p>
           <div className="d-flex gap-2">
-            <button className="btn btn-sm btn-dark flex-fill">
+            <button className="btn btn-sm btn-dark flex-fill" onClick={addToCart}>
               <i className="fa fa-cart-plus me-1"></i>Add
             </button>
-            <button className="btn btn-sm btn-outline-danger">
+            <button className="btn btn-sm btn-outline-danger" onClick={addToWishlist}>
               <i className="fa fa-heart"></i>
             </button>
           </div>
@@ -74,5 +87,3 @@ function ProductCard({ product }) {
     </motion.div>
   );
 }
-
-export default ProductCard;

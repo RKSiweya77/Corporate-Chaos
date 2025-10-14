@@ -1,14 +1,15 @@
-// components/products/Categories.js
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/axios";
 
-function Categories() {
+export default function Categories() {
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
-    api.get("categories/")
-      .then((res) => setCategories(res.data))
+    // Use the non-paginated endpoint to simplify
+    api
+      .get("/categories/all/")
+      .then((res) => setCategories(Array.isArray(res.data) ? res.data : res.data?.results || []))
       .catch((err) => console.error("Error fetching categories:", err));
   }, []);
 
@@ -20,12 +21,12 @@ function Categories() {
           categories.map((c) => (
             <div key={c.id} className="col-md-3 col-6">
               <Link
-                to={`/category/${c.title.toLowerCase().replace(/\s+/g, "-")}/${c.id}`}
+                to={`/category/${c.slug || c.title.toLowerCase().replace(/\s+/g, "-")}/${c.id}`}
                 className="card text-center text-decoration-none shadow-sm border-0 h-100"
               >
                 <div className="card-body">
                   <h6 className="fw-bold">{c.title}</h6>
-                  <p className="text-muted small">{c.detail}</p>
+                  {!!c.detail && <p className="text-muted small">{c.detail}</p>}
                 </div>
               </Link>
             </div>
@@ -37,5 +38,3 @@ function Categories() {
     </div>
   );
 }
-
-export default Categories;
