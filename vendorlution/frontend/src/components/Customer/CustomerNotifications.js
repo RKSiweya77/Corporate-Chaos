@@ -1,25 +1,51 @@
 // components/Customer/CustomerNotifications.js
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import api from "../../api/axios";
 
-function CustomerNotifications() {
-  const [notifications, setNotifications] = useState([
-    { id: 1, text: "Your order #1234 has been delivered 🎉", time: "2h ago", read: false },
-    { id: 2, text: "New discount available on electronics 💻", time: "1d ago", read: false },
-  ]);
+function fmt(d) {
+  try { return new Date(d).toLocaleString(); } catch { return d; }
+}
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
+export default function CustomerNotifications() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  const load = () => {
+    setLoading(true);
+    setErr("");
+    api.get("/me/notifications/")
+      .then((res) => {
+        const data = Array.isArray(res.data) ? res.data : (res.data?.results || []);
+        setItems(data);
+      })
+      .catch(() => setErr("Failed to load notifications"))
+      .finally(() => setLoading(false));
   };
 
-  const deleteNotification = (id) => {
-    setNotifications(notifications.filter((n) => n.id !== id));
+  const markRead = async (id) => {
+    try {
+      await api.post(`/me/notifications/${id}/read/`);
+      setItems((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
+    } catch {}
   };
+
+  const markAllAsRead = async () => {
+    const unread = items.filter((n) => !n.is_read);
+    await Promise.all(unread.map((n) => api.post(`/me/notifications/${n.id}/read/`).catch(()=>{})));
+    load();
+  };
+
+  useEffect(load, []);
+
+  if (loading) return <div className="container py-4">Loading…</div>;
+  if (err) return <div className="container py-4 alert alert-danger">{err}</div>;
 
   return (
     <div className="container py-4">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h3 className="mb-0">Notifications</h3>
-        {notifications.length > 0 && (
+        {items.some((n) => !n.is_read) && (
           <button className="btn btn-sm btn-outline-dark" onClick={markAllAsRead}>
             Mark all as read
           </button>
@@ -28,28 +54,30 @@ function CustomerNotifications() {
 
       <div className="card shadow-sm border-0">
         <div className="list-group list-group-flush">
-          {notifications.length > 0 ? (
-            notifications.map((n) => (
+          {items.length ? (
+            items.map((n) => (
               <div
                 key={n.id}
-                className={`list-group-item d-flex justify-content-between align-items-center ${
-                  !n.read ? "fw-semibold bg-light" : ""
-                }`}
+                className={`list-group-item d-flex justify-content-between align-items-start ${!n.is_read ? "bg-light" : ""}`}
               >
-                <div>
-                  <i className="fa fa-bell me-2 text-warning"></i>
-                  {n.text}
-                  <div className="small text-muted">{n.time}</div>
+                <div className="me-3">
+                  <i className={`fa me-2 ${n.type === "order"
+                      ? "fa-box text-success"
+                      : n.type === "promo"
+                      ? "fa-tags text-primary"
+                      : n.type === "dispute"
+                      ? "fa-scale-balanced text-danger"
+                      : "fa-bell text-secondary"}`}></i>
                 </div>
-                <div className="d-flex align-items-center gap-2">
-                  {!n.read && <span className="badge bg-danger">New</span>}
-                  <button
-                    className="btn btn-sm btn-outline-danger"
-                    onClick={() => deleteNotification(n.id)}
-                  >
-                    <i className="fa fa-trash"></i>
+                <div className="flex-grow-1">
+                  <div className="small">{n.message}</div>
+                  <div className="small text-muted">{fmt(n.created_at)}</div>
+                </div>
+                {!n.is_read && (
+                  <button className="btn btn-sm btn-outline-dark" onClick={() => markRead(n.id)}>
+                    Mark read
                   </button>
-                </div>
+                )}
               </div>
             ))
           ) : (
@@ -63,5 +91,3 @@ function CustomerNotifications() {
     </div>
   );
 }
-
-export default CustomerNotifications;
