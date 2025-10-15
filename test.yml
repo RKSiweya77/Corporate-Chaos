@@ -1,0 +1,47 @@
+name: Django + React Tests (simple SQLite)
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ---- Checkout your code ----
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ---- Backend: Django ----
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run Django tests
+        env:
+          DJANGO_SETTINGS_MODULE:backend_api.settings
+        working-directory: backend
+        run: |
+          python manage.py test --verbosity=2
+
+      # ---- Frontend: React ----
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run React tests
+        working-directory: frontend
+        run: npm test -- --watchAll=false
