@@ -476,11 +476,33 @@ class MyConversationsView(generics.ListCreateAPIView):
         return qs.select_related("buyer__user", "vendor__user").order_by("-last_message_at", "-created_at").distinct()
 
     def perform_create(self, serializer):
+        """
+        Reuse an existing conversation for (buyer, vendor) if it exists.
+        This avoids IntegrityError on the unique (buyer, vendor) constraint.
+        """
         customer = _get_customer(self.request.user)
         vendor_id = self.request.data.get("vendor_id")
         if not (customer and vendor_id):
-            raise ValueError("vendor_id required")
+            raise serializers.ValidationError({"vendor_id": "required"})
+
+        existing = Conversation.objects.filter(buyer=customer, vendor_id=vendor_id).first()
+        if existing:
+            self.existing_conversation = existing
+            return
+
         serializer.save(buyer=customer, vendor_id=vendor_id)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        if hasattr(self, "existing_conversation"):
+            data = ConversationSerializer(self.existing_conversation).data
+            return Response(data, status=status.HTTP_200_OK)
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 class ConversationMessagesView(generics.ListCreateAPIView):
@@ -496,13 +518,23 @@ class ConversationMessagesView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         conv_id = self.request.data.get("conversation")
         if not conv_id:
-            raise ValueError("conversation required")
-        conv = Conversation.objects.select_related("buyer__user", "vendor__user").get(pk=conv_id)
+            raise serializers.ValidationError({"conversation": "required"})
+
+        try:
+            conv = Conversation.objects.select_related("buyer__user", "vendor__user").get(pk=conv_id)
+        except Conversation.DoesNotExist:
+            raise serializers.ValidationError({"conversation": "not found"})
+
         user = self.request.user
-        if user != conv.buyer.user and user != conv.vendor.user:
+        buyer_user = getattr(conv.buyer, "user", None)
+        vendor_user = getattr(conv.vendor, "user", None)
+
+        if user not in [buyer_user, vendor_user]:
             raise permissions.PermissionDenied("Not a participant")
+
         msg = serializer.save(sender=user)
-        Conversation.objects.filter(pk=msg.conversation_id).update(last_message_at=msg.created_at)
+        conv.last_message_at = msg.created_at
+        conv.save(update_fields=["last_message_at"])
 
 
 # ---------- Addresses ----------
@@ -618,6 +650,8 @@ class CheckoutView(APIView):
                 customer=customer,
                 status=Order.Status.PENDING,
                 total_amount=total_amount,
+                # The following fields assume you will add them in a migration
+                # (ok to keep here; they won't execute until you POST /checkout)
                 delivery_method=delivery_method,
                 shipping_fee=shipping_fee,
                 protection_fee=protection_fee,

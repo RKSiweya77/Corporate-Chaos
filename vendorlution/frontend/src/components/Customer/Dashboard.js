@@ -1,15 +1,9 @@
-import Sidebar from "./Sidebar";
 import { Link } from "react-router-dom";
 
 function Dashboard() {
   return (
     <div className="container mt-3">
       <div className="row">
-        {/* Sidebar */}
-        <div className="col-md-3 col-12 mb-2">
-          <Sidebar />
-        </div>
-
         {/* Main Content */}
         <div className="col-md-9 col-12 mb-2">
           <h3 className="mb-3">Welcome back 👋</h3>

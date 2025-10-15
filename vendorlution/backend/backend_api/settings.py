@@ -24,6 +24,7 @@ INSTALLED_APPS = [
 
     # Local
     "main",
+   
 ]
 
 MIDDLEWARE = [

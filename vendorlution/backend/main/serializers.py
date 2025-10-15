@@ -236,15 +236,33 @@ class CouponSerializer(serializers.ModelSerializer):
 # =========================
 
 class ConversationSerializer(serializers.ModelSerializer):
+    """
+    Created in the view using buyer=<current customer> and vendor_id from the POST.
+    Keep buyer/vendor read-only so the client doesn't need to send them.
+    """
     class Meta:
         model = Conversation
         fields = ["id", "buyer", "vendor", "last_message_at", "created_at"]
+        read_only_fields = ["buyer", "vendor", "last_message_at", "created_at"]
 
 
 class MessageSerializer(serializers.ModelSerializer):
+    """
+    Sender is injected in the view (sender=request.user), so mark it read-only.
+    Expose `is_me` for convenient bubble alignment on the frontend.
+    """
+    is_me = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Message
-        fields = ["id", "conversation", "sender", "text", "is_read", "created_at"]
+        fields = ["id", "conversation", "sender", "text", "is_read", "created_at", "is_me"]
+        read_only_fields = ["sender", "is_read", "created_at", "is_me"]
+
+    def get_is_me(self, obj):
+        request = self.context.get("request")
+        if not request or not hasattr(request, "user"):
+            return False
+        return obj.sender_id == getattr(request.user, "id", None)
 
 
 # =========================

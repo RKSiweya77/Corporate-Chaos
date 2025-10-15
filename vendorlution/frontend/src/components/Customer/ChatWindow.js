@@ -1,167 +1,258 @@
-// components/Customer/ChatWindow.js
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import api from "../../api/axios";
 
-export default function ChatWindow() {
-  const { id } = useParams(); // conversation id
-  const nav = useNavigate();
+// normalize list payloads: array OR {results:[...]}
+function toList(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.results)) return payload.results;
+  return [];
+}
+function toMedia(url) {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  try {
+    const base = api.defaults.baseURL || "/api";
+    const origin = base.startsWith("http") ? new URL(base).origin : window.location.origin;
+    return `${origin}${url.startsWith("/") ? url : `/${url}`}`;
+  } catch {
+    return url;
+  }
+}
 
-  const [me, setMe] = useState(null);
-  const [conv, setConv] = useState(null);
-  const [vendor, setVendor] = useState(null);
+export default function ChatWindow() {
+  const [search] = useSearchParams();
+  const vendorParam = search.get("vendor");
+  const productParam = search.get("product");
+  const conversationParam = search.get("conversation");
+
+  const vendorId = vendorParam ? Number(vendorParam) : null;
+  const productId = productParam ? Number(productParam) : null;
+
+  const [conversationId, setConversationId] = useState(conversationParam ? Number(conversationParam) : null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
+  const [sending, setSending] = useState(false);
 
-  const bottomRef = useRef(null);
+  const [product, setProduct] = useState(null);
+  const [vendor, setVendor] = useState(null);
+  const pollRef = useRef(null);
+  const listEndRef = useRef(null);
 
-  const myUserId = useMemo(() => me?.user?.id, [me]);
+  const scrollToEnd = () => {
+    listEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
-  const scrollToBottom = () => bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  // Load referenced product (to show a chip with image/title)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!productId) return;
+      try {
+        const res = await api.get(`/products/${productId}/`);
+        if (!alive) return;
+        setProduct(res.data);
+      } catch {}
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [productId]);
 
-  const loadAll = async () => {
-    setLoading(true);
-    setErr("");
+  // Ensure conversation: use query (?conversation=ID) OR (?vendor=ID) and create if missing
+  const ensureConversation = useCallback(async () => {
+    // If conversation id was explicitly provided in the URL, trust it
+    if (conversationParam) {
+      const id = Number(conversationParam);
+      setConversationId(id);
+      return id;
+    }
+    // Otherwise, resolve by vendor
+    if (!vendorId) return null;
+
+    // 1) list my convos
+    const all = await api.get("/me/conversations/");
+    const items = toList(all.data);
+    // Conversations in your serializer are primitive ids for buyer/vendor
+    let conv = items.find((c) => c.vendor === vendorId);
+
+    // If not found, create
+    if (!conv) {
+      const created = await api.post("/me/conversations/", { vendor_id: vendorId });
+      conv = created.data;
+    }
+
+    setConversationId(conv.id);
+    return conv.id;
+  }, [vendorId, conversationParam]);
+
+  // Load vendor profile for header (if we only have vendor id)
+  const loadVendor = useCallback(async (vId) => {
+    if (!vId) return;
     try {
-      // me
-      const rMe = await api.get("/auth/me/");
-      setMe(rMe.data);
+      const res = await api.get(`/vendors/${vId}/`);
+      setVendor(res.data);
+    } catch {}
+  }, []);
 
-      // conversations (to get vendor id for header)
-      const rConvos = await api.get("/me/conversations/");
-      const convos = Array.isArray(rConvos.data) ? rConvos.data : (rConvos.data?.results || []);
-      const c = convos.find((x) => String(x.id) === String(id));
-      if (!c) {
-        setErr("Conversation not found.");
-        setLoading(false);
-        return;
-      }
-      setConv(c);
-
-      // vendor header
-      if (c.vendor) {
-        try {
-          const rV = await api.get(`/vendors/${c.vendor}/`);
-          setVendor(rV.data);
-        } catch {
-          setVendor(null);
+  // Load messages for a conversation
+  const loadMessages = useCallback(
+    async (convId) => {
+      if (!convId) return;
+      try {
+        const res = await api.get(`/me/messages/?conversation_id=${convId}`);
+        const list = toList(res.data);
+        setMessages(list);
+        // attempt to load vendor if missing (from first message's convo if present)
+        if (!vendor && list.length) {
+          // we don't have nested convo fields in each message; rely on url param vendorId
+          if (vendorId) loadVendor(vendorId);
+        }
+        // scroll to bottom
+        setTimeout(scrollToEnd, 50);
+      } catch (e) {
+        // auth guard
+        if (e?.response?.status === 401) {
+          window.location.href = "/customer/login?next=" + encodeURIComponent(window.location.href);
         }
       }
+    },
+    [vendor, vendorId, loadVendor]
+  );
 
-      // messages
-      const rMsgs = await api.get(`/me/messages/?conversation_id=${id}`);
-      const data = Array.isArray(rMsgs.data) ? rMsgs.data : (rMsgs.data?.results || []);
-      setMessages(data);
-      setTimeout(scrollToBottom, 50);
-    } catch {
-      setErr("Failed to load chat.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { loadAll(); /* eslint-disable-next-line */ }, [id]);
-
-  // optional light polling to see new messages (15s)
+  // Initial bootstrap: ensure conversation, load vendor/product, then messages
   useEffect(() => {
-    if (!id) return;
-    const t = setInterval(async () => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
       try {
-        const r = await api.get(`/me/messages/?conversation_id=${id}`);
-        const data = Array.isArray(r.data) ? r.data : (r.data?.results || []);
-        setMessages(data);
-      } catch {}
-    }, 15000);
-    return () => clearInterval(t);
-  }, [id]);
+        const id = await ensureConversation();
+        if (!alive) return;
+        if (vendorId) loadVendor(vendorId);
+        if (id) await loadMessages(id);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [ensureConversation, loadMessages, loadVendor, vendorId]);
 
-  const send = async () => {
-    const body = (text || "").trim();
-    if (!body) return;
+  // Poll every 6s
+  useEffect(() => {
+    if (!conversationId) return;
+    pollRef.current = setInterval(() => loadMessages(conversationId), 6000);
+    return () => clearInterval(pollRef.current);
+  }, [conversationId, loadMessages]);
+
+  const onSend = async (e) => {
+    e.preventDefault();
+    const body = text.trim();
+    if (!body || !conversationId) return;
     try {
-      await api.post("/me/messages/", { conversation: Number(id), text: body });
+      setSending(true);
+      await api.post("/me/messages/", {
+        conversation: conversationId,
+        text: body,
+      });
       setText("");
-      // refresh messages
-      const r = await api.get(`/me/messages/?conversation_id=${id}`);
-      const data = Array.isArray(r.data) ? r.data : (r.data?.results || []);
-      setMessages(data);
-      setTimeout(scrollToBottom, 30);
-    } catch (e) {
-      const msg =
-        e?.response?.data?.detail ||
-        (typeof e?.response?.data === "object"
-          ? JSON.stringify(e.response.data)
-          : "Failed to send.");
-      alert(msg);
+      await loadMessages(conversationId);
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        window.location.href = "/customer/login?next=" + encodeURIComponent(window.location.href);
+      } else {
+        alert("Failed to send message");
+      }
+    } finally {
+      setSending(false);
     }
   };
 
-  if (loading) return <div className="container py-4">Loading…</div>;
-  if (err) {
+  const vendorName = useMemo(() => {
     return (
-      <div className="container py-4">
-        <div className="alert alert-danger d-flex justify-content-between align-items-center">
-          <div>{err}</div>
-          <Link className="btn btn-sm btn-outline-light" to="/customer/inbox">Back to Inbox</Link>
-        </div>
-      </div>
+      vendor?.shop_name ||
+      vendor?.owner?.username ||
+      vendor?.user?.username ||
+      (vendorId ? `Vendor #${vendorId}` : "Chat")
     );
-  }
-
-  const headerName = vendor?.shop_name || (conv?.vendor ? `Vendor #${conv.vendor}` : "Chat");
-  const logo = vendor?.logo;
+  }, [vendor, vendorId]);
 
   return (
-    <div className="container py-4">
+    <div className="container py-3">
       {/* Header */}
-      <div className="d-flex align-items-center mb-3 border-bottom pb-2">
-        <button className="btn btn-sm btn-outline-dark me-3" onClick={() => nav(-1)}>
-          <i className="fa fa-arrow-left"></i>
-        </button>
-        {logo ? (
-          <img src={logo} alt={headerName} width="40" height="40" className="rounded-circle me-2 border" />
-        ) : (
-          <div className="rounded-circle me-2 bg-light border" style={{ width: 40, height: 40 }} />
-        )}
-        <h6 className="mb-0">{headerName}</h6>
-      </div>
-
-      {/* Messages */}
-      <div className="card shadow-sm border-0 mb-3" style={{ height: 420, overflowY: "auto" }}>
-        <div className="card-body d-flex flex-column gap-2">
-          {messages.map((m) => {
-            const mine = Number(m.sender) === Number(myUserId);
-            return (
-              <div key={m.id} className={`d-flex ${mine ? "justify-content-end" : "justify-content-start"}`}>
-                <div
-                  className={`p-2 rounded-3 ${mine ? "bg-dark text-white" : "bg-light border"}`}
-                  style={{ maxWidth: "75%" }}
-                >
-                  {m.text && <p className="mb-1 small">{m.text}</p>}
-                  <small className="text-muted">{new Date(m.created_at).toLocaleString()}</small>
-                </div>
-              </div>
-            );
-          })}
-          <div ref={bottomRef} />
+      <div className="d-flex align-items-center justify-content-between mb-3">
+        <div className="d-flex align-items-center gap-2">
+          <div className="rounded-circle bg-light d-flex align-items-center justify-content-center" style={{ width: 40, height: 40 }}>
+            <i className="fa fa-store"></i>
+          </div>
+          <div>
+            <div className="fw-semibold">{vendorName}</div>
+            {vendor?.rating_avg ? (
+              <div className="small text-muted">★ {Number(vendor.rating_avg).toFixed(1)}</div>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      {/* Input */}
-      <div className="d-flex">
-        <input
-          type="text"
-          className="form-control me-2"
-          placeholder="Type a message…"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send()}
-        />
-        <button className="btn btn-dark" onClick={send}>
-          <i className="fa fa-paper-plane"></i>
-        </button>
+      {/* Product reference chip (if came from a product) */}
+      {product && (
+        <div className="card mb-3">
+          <div className="card-body d-flex align-items-center gap-3">
+            <img
+              src={toMedia(product.main_image)}
+              alt={product.title}
+              style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 6 }}
+            />
+            <div className="flex-grow-1">
+              <div className="fw-semibold">{product.title}</div>
+              <div className="text-muted small">Ref: Product #{product.id}</div>
+            </div>
+            <a className="btn btn-outline-secondary btn-sm" href={`/product/${product.slug ?? product.id}/${product.id}`}>
+              View
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* Messages */}
+      <div className="card">
+        <div className="card-body" style={{ height: 420, overflowY: "auto" }}>
+          {loading ? (
+            <div className="text-center text-muted">Loading…</div>
+          ) : messages.length === 0 ? (
+            <div className="text-center text-muted">Say hi 👋</div>
+          ) : (
+            messages.map((m) => (
+              <div key={m.id} className={`d-flex ${m.is_me ? "justify-content-end" : "justify-content-start"} mb-2`}>
+                <div
+                  className={`px-3 py-2 rounded-3 ${m.is_me ? "bg-dark text-white" : "bg-light"}`}
+                  style={{ maxWidth: "75%" }}
+                >
+                  <div className="small" style={{ whiteSpace: "pre-wrap" }}>{m.text}</div>
+                  <div className="text-muted small mt-1">
+                    {new Date(m.created_at).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+          <div ref={listEndRef} />
+        </div>
+
+        {/* Composer */}
+        <form className="card-footer d-flex gap-2" onSubmit={onSend}>
+          <input
+            className="form-control"
+            placeholder={product ? `Ask about “${product.title}”...` : "Type a message..."}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <button className="btn btn-dark" disabled={!conversationId || sending || !text.trim()}>
+            {sending ? "Sending…" : "Send"}
+          </button>
+        </form>
       </div>
     </div>
   );

@@ -1,4 +1,3 @@
-// frontend/src/App.js
 import { Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { VendorProvider } from "./context/VendorContext";
@@ -13,12 +12,14 @@ import HomeLanding from "./components/Homepage/HomeLanding";
 import AllProducts from "./components/products/AllProducts";
 import Categories from "./components/products/Categories";
 import CategoryProducts from "./components/products/CategoryProducts";
-import ProductDetail from "./components/products/ProductDetail";
 import Checkout from "./components/checkout/Checkout";
 
 import ExploreVendors from "./components/Vendor/ExploreVendors";
 import PopularProducts from "./components/products/PopularProducts";
 import NewArrivals from "./components/products/NewArrivals";
+
+// ✅ Use the existing location of the file
+import ProductDetail from "./components/products/ProductDetail";
 
 // Customer
 import Register from "./components/Customer/Register";
@@ -32,7 +33,6 @@ import Profile from "./components/Customer/Profile";
 import ChangePassword from "./components/Customer/ChangePassword";
 import AddressList from "./components/Customer/AddressList";
 import AddAddress from "./components/Customer/AddAddress";
-import CustomerInbox from "./components/Customer/CustomerInbox";
 import ChatWindow from "./components/Customer/ChatWindow";
 import CustomerWallet from "./components/Customer/CustomerWallet";
 import CustomerCoupons from "./components/Customer/CustomerCoupons";
@@ -97,8 +97,13 @@ function App() {
             <Route path="/customer/change-password" element={<ChangePassword />} />
             <Route path="/customer/addresses" element={<AddressList />} />
             <Route path="/customer/add-address" element={<AddAddress />} />
-            <Route path="/customer/inbox" element={<CustomerInbox />} />
+
+            {/* 👇 Single chat route handles:
+                /customer/inbox?vendor=ID&product=ID  OR  /customer/inbox?conversation=ID */}
+            <Route path="/customer/inbox" element={<ChatWindow />} />
+            {/* keep :id alias if you still link to it elsewhere */}
             <Route path="/customer/inbox/:id" element={<ChatWindow />} />
+
             <Route path="/customer/wallet" element={<CustomerWallet />} />
             <Route path="/customer/coupons" element={<CustomerCoupons />} />
             <Route path="/customer/reviews" element={<CustomerReviews />} />
@@ -108,9 +113,7 @@ function App() {
             <Route path="/customer/resolution-center" element={<ResolutionCenter />} />
 
             {/* Vendor */}
-            {/* ⭐ NEW: Create Shop page */}
             <Route path="/vendor/create" element={<CreateShop />} />
-
             <Route path="/vendor/register" element={<VendorRegister />} />
             <Route path="/vendor/login" element={<VendorLogin />} />
             <Route path="/vendor/dashboard" element={<VendorDashboard />} />
@@ -132,7 +135,7 @@ function App() {
             <Route path="/vendor/change-password" element={<VendorChangePassword />} />
             <Route path="/vendor/store/:vendor_slug/:vendor_id" element={<VendorStore />} />
 
-            {/* 👇 Friendly slug-only public route — must be last in /vendor/* to avoid catching others */}
+            {/* slug-only public route — must be last in /vendor/* */}
             <Route path="/vendor/:vendor_slug" element={<VendorPublicProfile />} />
           </Routes>
         </main>
