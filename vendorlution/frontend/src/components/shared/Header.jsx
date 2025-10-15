@@ -141,7 +141,7 @@ function Header() {
               <i className="fa fa-bag-shopping me-2"></i> My Orders
             </Link>
 
-            {/* Wallet dropdown */}
+            {/* Wallet dropdown (unified wallet) */}
             <div
               className="list-group-item d-flex justify-content-between align-items-center"
               onClick={() => setWalletMenuOpen(!walletMenuOpen)}
@@ -152,17 +152,17 @@ function Header() {
             </div>
             {walletMenuOpen && (
               <div className="list-group ps-4">
-                <Link to="/customer/wallet" className="list-group-item list-group-item-action">
+                <Link to="/wallet" className="list-group-item list-group-item-action">
                   Wallet Overview
                 </Link>
-                <Link to="/customer/wallet/deposit" className="list-group-item list-group-item-action">
-                  Deposit
+                <Link to="/wallet/deposit" className="list-group-item list-group-item-action">
+                  Deposit (Instant EFT)
                 </Link>
-                <Link to="/customer/wallet/withdraw" className="list-group-item list-group-item-action">
+                <Link to="/wallet/withdraw" className="list-group-item list-group-item-action">
                   Withdraw
                 </Link>
-                <Link to="/customer/payment-methods" className="list-group-item list-group-item-action">
-                  Payment Methods
+                <Link to="/wallet/transactions" className="list-group-item list-group-item-action">
+                  Transactions
                 </Link>
               </div>
             )}
@@ -203,12 +203,15 @@ function Header() {
                   <Link to="/vendor/inbox" className="list-group-item list-group-item-action">
                     <i className="fa fa-comments me-2"></i> Messages
                   </Link>
-                  <Link to="/vendor/wallet" className="list-group-item list-group-item-action">
+
+                  {/* Point vendor wallet to the same unified wallet pages */}
+                  <Link to="/wallet" className="list-group-item list-group-item-action">
                     <i className="fa fa-sack-dollar me-2"></i> Wallet
                   </Link>
-                  <Link to="/vendor/payouts" className="list-group-item list-group-item-action">
-                    <i className="fa fa-money-bill-transfer me-2"></i> Payouts
+                  <Link to="/wallet/withdraw" className="list-group-item list-group-item-action">
+                    <i className="fa fa-money-bill-transfer me-2"></i> Withdraw
                   </Link>
+
                   <Link to="/vendor/reports" className="list-group-item list-group-item-action">
                     <i className="fa fa-chart-line me-2"></i> Reports
                   </Link>

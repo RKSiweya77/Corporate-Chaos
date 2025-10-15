@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Link } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { VendorProvider } from "./context/VendorContext";
 
@@ -34,12 +34,11 @@ import ChangePassword from "./components/Customer/ChangePassword";
 import AddressList from "./components/Customer/AddressList";
 import AddAddress from "./components/Customer/AddAddress";
 import ChatWindow from "./components/Customer/ChatWindow";
-import CustomerWallet from "./components/Customer/CustomerWallet";
+// 🔻 Removed old wallet components (CustomerWallet, PaymentMethods) imports
 import CustomerCoupons from "./components/Customer/CustomerCoupons";
 import CustomerReviews from "./components/Customer/CustomerReviews";
 import CustomerNotifications from "./components/Customer/CustomerNotifications";
 import CustomerSupport from "./components/Customer/CustomerSupport";
-import PaymentMethods from "./components/Customer/PaymentMethods";
 import ResolutionCenter from "./components/Customer/ResolutionCenter";
 
 // Vendor
@@ -54,7 +53,7 @@ import VendorReports from "./components/Vendor/VendorReports";
 import VendorProfile from "./components/Vendor/VendorProfile";
 import VendorEditProfile from "./components/Vendor/VendorEditProfile";
 import VendorPublicProfile from "./components/Vendor/VendorPublicProfile";
-import VendorWallet from "./components/Vendor/VendorWallet";
+// 🔻 Removed VendorWallet import (unified wallet now)
 import PayoutsHistory from "./components/Vendor/PayoutsHistory";
 import VendorInbox from "./components/Vendor/VendorInbox";
 import VendorReviews from "./components/Vendor/VendorReviews";
@@ -66,6 +65,33 @@ import VendorStore from "./components/Vendor/VendorStore";
 
 // ⭐ NEW
 import CreateShop from "./components/Vendor/CreateShop";
+
+// ⭐ NEW — unified wallet module
+import WalletLayout from "./components/wallet/WalletLayout";
+import WalletOverview from "./components/wallet/WalletOverview";
+import DepositOzow from "./components/wallet/DepositOzow";
+import Withdraw from "./components/wallet/Withdraw";
+import Transactions from "./components/wallet/Transactions";
+
+// Small inline helpers for Ozow return/cancel pages
+function DepositSuccess() {
+  return (
+    <div className="text-center py-4">
+      <h5 className="text-success mb-2">Deposit success</h5>
+      <p className="text-muted">If your balance hasn’t updated yet, it will after the webhook finalizes.</p>
+      <Link className="btn btn-dark" to="/wallet">Back to Wallet</Link>
+    </div>
+  );
+}
+function DepositCancel() {
+  return (
+    <div className="text-center py-4">
+      <h5 className="text-danger mb-2">Deposit cancelled</h5>
+      <p className="text-muted">No funds were taken. You can try again anytime.</p>
+      <Link className="btn btn-outline-dark" to="/wallet/deposit">Try Again</Link>
+    </div>
+  );
+}
 
 function App() {
   return (
@@ -104,12 +130,14 @@ function App() {
             {/* keep :id alias if you still link to it elsewhere */}
             <Route path="/customer/inbox/:id" element={<ChatWindow />} />
 
-            <Route path="/customer/wallet" element={<CustomerWallet />} />
+            {/* 🔻 Removed legacy wallet routes
+                <Route path="/customer/wallet" element={<CustomerWallet />} />
+                <Route path="/customer/payment-methods" element={<PaymentMethods />} />
+            */}
             <Route path="/customer/coupons" element={<CustomerCoupons />} />
             <Route path="/customer/reviews" element={<CustomerReviews />} />
             <Route path="/customer/notifications" element={<CustomerNotifications />} />
             <Route path="/customer/support" element={<CustomerSupport />} />
-            <Route path="/customer/payment-methods" element={<PaymentMethods />} />
             <Route path="/customer/resolution-center" element={<ResolutionCenter />} />
 
             {/* Vendor */}
@@ -125,7 +153,9 @@ function App() {
             <Route path="/vendor/profile" element={<VendorProfile />} />
             <Route path="/vendor/edit-profile" element={<VendorEditProfile />} />
             <Route path="/vendor/public-profile/:vendor_id" element={<VendorPublicProfile />} />
-            <Route path="/vendor/wallet" element={<VendorWallet />} />
+            {/* 🔻 Removed legacy vendor wallet route
+                <Route path="/vendor/wallet" element={<VendorWallet />} />
+            */}
             <Route path="/vendor/payouts" element={<PayoutsHistory />} />
             <Route path="/vendor/inbox" element={<VendorInbox />} />
             <Route path="/vendor/reviews" element={<VendorReviews />} />
@@ -137,6 +167,17 @@ function App() {
 
             {/* slug-only public route — must be last in /vendor/* */}
             <Route path="/vendor/:vendor_slug" element={<VendorPublicProfile />} />
+
+            {/* ⭐ NEW unified Wallet routes */}
+            <Route path="/wallet" element={<WalletLayout />}>
+              <Route index element={<WalletOverview />} />
+              <Route path="deposit" element={<DepositOzow />} />
+              <Route path="withdraw" element={<Withdraw />} />
+              <Route path="transactions" element={<Transactions />} />
+              {/* Ozow return pages from settings */}
+              <Route path="deposit/success" element={<DepositSuccess />} />
+              <Route path="deposit/cancel" element={<DepositCancel />} />
+            </Route>
           </Routes>
         </main>
         <Footer />

@@ -7,7 +7,7 @@ SECRET_KEY = "django-insecure-temp-key"
 DEBUG = True
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
-# Installed apps
+# ---------------- Installed apps ----------------
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -19,19 +19,17 @@ INSTALLED_APPS = [
     # Third-party
     "rest_framework",
     "corsheaders",
-    # If you enable token blacklisting later:
-    # "rest_framework_simplejwt.token_blacklist",
 
     # Local
     "main",
-   
+    "wallet.apps.WalletConfig",  # loads signals via AppConfig
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
 
-    # CORS middleware
+    # CORS
     "corsheaders.middleware.CorsMiddleware",
 
     "django.middleware.common.CommonMiddleware",
@@ -61,7 +59,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "backend_api.wsgi.application"
 
-# Database (Postgres)
+# ---------------- Database ----------------
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -73,7 +71,7 @@ DATABASES = {
     }
 }
 
-# Password validation
+# ---------------- Password validation ----------------
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -81,26 +79,24 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# Internationalization
+# ---------------- I18N ----------------
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-# Static & Media
+# ---------------- Static & Media ----------------
 STATIC_URL = "static/"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# ---------------- Django REST Framework + JWT ----------------
+# ---------------- DRF + JWT ----------------
 REST_FRAMEWORK = {
-    # Keep public endpoints working while we roll in JWT (you can tighten later)
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
     ],
-    # Enable JWT auth; views that require auth will read Authorization: Bearer <token>
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
@@ -115,20 +111,54 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": True,        # issue a new refresh token on refresh
-    "BLACKLIST_AFTER_ROTATION": False,     # set True if you enable blacklist app
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": False,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "ALGORITHM": "HS256",
 }
 
-# ---------------- CORS (allow React frontend) ----------------
+# ---------------- CORS (React) ----------------
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
-# If you ever send cookies, toggle this + allow headers/origins accordingly:
-# CORS_ALLOW_CREDENTIALS = True
 
-# Dev fallback vendor (used when no auth; can be removed after full auth migration)
+# Dev fallback vendor (if used by older views)
 DEV_MODE_DEFAULT_VENDOR_ID = 1
+
+# ---------------- WALLET / PAYMENTS ----------------
+# Global live/sandbox flag
+LIVE_MODE = False  # set True in production
+
+# === Ozow (Instant EFT) ===
+# Paste your **SANDBOX** credentials here. In production, replace with live values and set LIVE_MODE=True.
+OZOW_API_KEY = "<sandbox_api_key>"
+OZOW_SITE_CODE = "<sandbox_site_code>"
+OZOW_PRIVATE_KEY = "<sandbox_private_key>"  # used to create HashCheck
+
+# Absolute URLs required by Ozow (the view validates these exact names)
+OZOW_SUCCESS_URL = "http://127.0.0.1:3000/wallet/deposit/success"
+OZOW_CANCEL_URL  = "http://127.0.0.1:3000/wallet/deposit/cancel"
+OZOW_ERROR_URL   = "http://127.0.0.1:3000/wallet/deposit/error"
+OZOW_NOTIFY_URL  = "http://127.0.0.1:8000/api/wallet/webhooks/ozow/"
+
+# Optional legacy alias (kept for compatibility with older code)
+OZOW_RETURN_URL = OZOW_SUCCESS_URL
+
+# Environment toggle specifically for the Ozow provider module
+OZOW_IS_TEST = not LIVE_MODE  # True -> staging endpoints, False -> live
+
+# === Peach (placeholder for later steps) ===
+PEACH_ENTITY_ID = "8ac7a4cxxxxxxx"
+PEACH_API_PASSWORD = "test_peach_pwd"
+PEACH_BASE_URL = "https://eu-test.oppwa.com/v1"
+PEACH_NOTIFY_URL = "http://127.0.0.1:8000/api/wallet/webhooks/peach/"
+
+# === Vouchers (manual) — we’ll replace with provider APIs later ===
+VOUCHER_LIVE = False
+VOUCHER_ACCEPTED_ISSUERS = ["1VOUCHER", "OTT", "BLU", "KAZANG", "FLASH"]
+
+# === Payouts ===
+PAYOUT_LIVE = False
+PAYOUT_MIN_AMOUNT = "10.00"
