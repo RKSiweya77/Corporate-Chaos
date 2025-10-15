@@ -60,24 +60,23 @@ export default function AddProduct() {
       fd.append("detail", detail.trim());
       fd.append("price", String(price));
       fd.append("category", String(categoryId));
-      fd.append("vendor", String(vendorId));   // backend ProductCreateSerializer accepts this
+      fd.append("vendor", String(vendorId));
       fd.append("is_active", "true");
-      if (image) fd.append("image", image);
+
+      // IMPORTANT: backend expects "main_image" (not "image")
+      fd.append("main_image", image);
 
       // 3) submit
-      const res = await postMultipart("/products/", fd);
-      // go to vendor products list or dashboard
+      await postMultipart("/products/", fd);
+
+      // optional: toast here
       nav("/vendor/products");
     } catch (err) {
       console.error(err);
-      // try to surface DRF error details if present
       let msg = "Failed to add product.";
       if (err?.response?.data) {
         try {
-          msg =
-            typeof err.response.data === "string"
-              ? err.response.data
-              : JSON.stringify(err.response.data);
+          msg = typeof err.response.data === "string" ? err.response.data : JSON.stringify(err.response.data);
         } catch {}
       }
       setError(msg);
@@ -92,11 +91,7 @@ export default function AddProduct() {
         Add Product
       </h3>
 
-      {error && (
-        <div className="alert alert-danger">
-          {error}
-        </div>
-      )}
+      {error && <div className="alert alert-danger">{error}</div>}
 
       <form onSubmit={handleSubmit} className="card p-3">
         <div className="mb-3">
