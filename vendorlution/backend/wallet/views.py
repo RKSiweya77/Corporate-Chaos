@@ -8,6 +8,7 @@ from decimal import Decimal, InvalidOperation
 from django.conf import settings
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction as db_transaction
 
 from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes
@@ -16,51 +17,18 @@ from rest_framework.views import APIView
 
 from .models import Wallet, LedgerEntry, PaymentIntent, PayoutRequest, WebhookLog
 from .providers.ozow import build_hosted_payment_url
-
+from .services import WalletService
 
 # ------------------------ helpers ------------------------
 def _to_two_dp(value: Decimal) -> str:
     return f"{value.quantize(Decimal('0.01'))}"
 
-
 def _safe_bank_ref(seed: str) -> str:
-    """
-    Ozow requires <=20 chars; alnum, spaces and dashes allowed.
-    We generate a compact 'VDL-XXXXXXXXXX' style and strip other chars.
-    """
+    """Ozow requires <=20 chars; alnum, spaces and dashes allowed."""
     base = ("VDL-" + re.sub(r"[^A-Za-z0-9]", "", seed))[:20]
     return base or "VDL-REF-1"
 
-
-def _credit_wallet(wallet: Wallet, amount: Decimal, *, ref: str, meta: dict | None = None):
-    wallet.balance = (wallet.balance or Decimal("0")) + amount
-    wallet.save(update_fields=["balance"])
-    LedgerEntry.objects.create(
-        wallet=wallet,
-        type="credit",
-        amount=amount,
-        currency="ZAR",
-        description="Deposit (Ozow)",
-        reference=ref,
-        metadata=meta or {},
-    )
-
-
-def _debit_wallet(wallet: Wallet, amount: Decimal, *, ref: str, meta: dict | None = None):
-    wallet.balance = (wallet.balance or Decimal("0")) - amount
-    wallet.save(update_fields=["balance"])
-    LedgerEntry.objects.create(
-        wallet=wallet,
-        type="debit",
-        amount=amount,
-        currency="ZAR",
-        description="Withdrawal",
-        reference=ref,
-        metadata=meta or {},
-    )
-
-
-# ------------------------ me/transactions ------------------------
+# ------------------------ wallet overview ------------------------
 class MeWalletView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -70,20 +38,21 @@ class MeWalletView(APIView):
         return Response({
             "id": wallet.id,
             "balance": str(wallet.balance or Decimal("0")),
-            "currency": wallet.currency,
-            "updated_at": wallet.updated_at,
+            "pending": str(wallet.pending or Decimal("0")),
+            "currency": "ZAR",
+            "created_at": wallet.created_at,
             "recent": [
                 {
-                    "id": e.id,
-                    "type": e.type,
+                    "id": str(e.id),
+                    "entry_type": e.type,
                     "amount": str(e.amount),
                     "description": e.description,
                     "reference": e.reference,
+                    "balance_after": str(e.balance_after),
                     "created_at": e.created_at,
                 } for e in last5
             ]
         })
-
 
 class TransactionsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -92,38 +61,37 @@ class TransactionsView(APIView):
         wallet, _ = Wallet.objects.get_or_create(user=request.user)
         qs = LedgerEntry.objects.filter(wallet=wallet).order_by("-created_at")
         data = [{
-            "id": e.id,
-            "type": e.type,
+            "id": str(e.id),
+            "entry_type": e.type,
             "amount": str(e.amount),
-            "currency": e.currency,
             "description": e.description,
             "reference": e.reference,
+            "balance_after": str(e.balance_after),
             "created_at": e.created_at,
         } for e in qs]
         return Response(data)
 
-
 # ------------------------ Ozow: start deposit ------------------------
 class OzowDepositStartView(APIView):
-    """
-    POST { amount: "50.00" }  ->  { redirect_url, reference }
-    """
+    """POST { amount: "50.00" } -> { redirect_url, reference }"""
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         # Validate amount
         raw_amount = str(request.data.get("amount", "")).strip()
         if not raw_amount:
-            return Response({"detail": "Amount is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Amount is required."}, status=400)
+        
         try:
             amount = Decimal(raw_amount)
         except InvalidOperation:
-            return Response({"detail": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
-        if amount <= 0:
-            return Response({"detail": "Amount must be greater than 0."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Invalid amount."}, status=400)
+        
+        if amount < Decimal("10.00"):
+            return Response({"detail": "Minimum deposit is R 10.00"}, status=400)
 
-        # Validate required settings (per Ozow docs)
-        required_settings = {
+        # Validate settings
+        required = {
             "OZOW_SITE_CODE": getattr(settings, "OZOW_SITE_CODE", None),
             "OZOW_API_KEY": getattr(settings, "OZOW_API_KEY", None),
             "OZOW_PRIVATE_KEY": getattr(settings, "OZOW_PRIVATE_KEY", None),
@@ -132,144 +100,134 @@ class OzowDepositStartView(APIView):
             "OZOW_ERROR_URL": getattr(settings, "OZOW_ERROR_URL", None),
             "OZOW_NOTIFY_URL": getattr(settings, "OZOW_NOTIFY_URL", None),
         }
-        missing = [k for k, v in required_settings.items() if not v]
+        
+        missing = [k for k, v in required.items() if not v or v.startswith("<")]
         if missing:
             return Response(
-                {"detail": f"Server misconfiguration; missing {', '.join(missing)}."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                {"detail": f"Server misconfiguration: {', '.join(missing)} not set. Please contact support."},
+                status=500
             )
 
-        # Ensure wallet & intent
+        # Create wallet & intent
         wallet, _ = Wallet.objects.get_or_create(user=request.user)
         intent = PaymentIntent.objects.create(
             user=request.user,
             wallet=wallet,
             provider="ozow",
+            kind="deposit",
             amount=amount,
             currency="ZAR",
             status="created",
-            # many codebases have an auto `reference`; if not, str(id) will be used below
         )
 
-        # Choose transaction reference & bank reference
-        tx_ref = getattr(intent, "reference", None) or str(intent.id)
+        tx_ref = str(intent.id)
         bank_ref = _safe_bank_ref(tx_ref)
-
-        # Determine environment
-        is_test = bool(getattr(settings, "OZOW_IS_TEST", True))
-        # If you prefer LIVE_MODE flag, uncomment:
-        # is_test = not bool(getattr(settings, "LIVE_MODE", False))
+        is_test = getattr(settings, "OZOW_IS_TEST", not getattr(settings, "LIVE_MODE", False))
 
         try:
             redirect_url, payment_request_id, payload = build_hosted_payment_url(
-                site_code=required_settings["OZOW_SITE_CODE"],
-                api_key=required_settings["OZOW_API_KEY"],
-                private_key=required_settings["OZOW_PRIVATE_KEY"],
+                site_code=required["OZOW_SITE_CODE"],
+                api_key=required["OZOW_API_KEY"],
+                private_key=required["OZOW_PRIVATE_KEY"],
                 amount=_to_two_dp(amount),
                 transaction_reference=tx_ref,
                 bank_reference=bank_ref,
-                success_url=required_settings["OZOW_SUCCESS_URL"],
-                cancel_url=required_settings["OZOW_CANCEL_URL"],
-                error_url=required_settings["OZOW_ERROR_URL"],
-                notify_url=required_settings["OZOW_NOTIFY_URL"],
-                customer=(request.user.email or None),
+                success_url=required["OZOW_SUCCESS_URL"],
+                cancel_url=required["OZOW_CANCEL_URL"],
+                error_url=required["OZOW_ERROR_URL"],
+                notify_url=required["OZOW_NOTIFY_URL"],
+                customer=request.user.email or None,
                 is_test=is_test,
             )
         except Exception as e:
-            # Persist some context on the intent for troubleshooting
-            try:
-                if hasattr(intent, "provider_payload"):
-                    intent.provider_payload = {"error": str(e)}
-                    intent.save(update_fields=["provider_payload"])
-                else:
-                    intent.error = str(e)  # if a generic text field exists
-                    intent.save(update_fields=["error"])
-            except Exception:
-                pass
-            return Response(
-                {"detail": f"Ozow start failed: {e}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            intent.status = "failed"
+            intent.save(update_fields=["status"])
+            return Response({"detail": f"Payment gateway error: {str(e)}"}, status=500)
 
-        # Save success context (non-fatal if fields don't exist)
-        try:
-            to_set = []
-            if hasattr(intent, "provider_payload"):
-                intent.provider_payload = {
-                    "paymentRequestId": payment_request_id,
-                    "request": payload,
-                    "redirect_url": redirect_url,
-                }
-                to_set.append("provider_payload")
-            if hasattr(intent, "status"):
-                intent.status = "pending"
-                to_set.append("status")
-            if to_set:
-                intent.save(update_fields=to_set + ["updated_at"] if hasattr(intent, "updated_at") else to_set)
-        except Exception:
-            pass
+        intent.provider_reference = payment_request_id
+        intent.status = "pending"
+        intent.save(update_fields=["provider_reference", "status"])
 
-        return Response(
-            {"redirect_url": redirect_url, "reference": tx_ref},
-            status=status.HTTP_200_OK,
-        )
+        return Response({
+            "redirect_url": redirect_url,
+            "reference": tx_ref,
+            "intent_id": str(intent.id),
+        })
 
-
-# ------------------------ Ozow: webhook (credit wallet) ------------------------
+# ------------------------ Ozow: webhook ------------------------
 @csrf_exempt
 @api_view(["POST"])
-@permission_classes([])  # Ozow calls this
+@permission_classes([])
 def ozow_webhook(request):
-    """
-    Handles TransactionNotificationResponse from Ozow and credits wallet on Complete.
-    We don't hard-fail on duplicates.
-    """
+    """Handle Ozow TransactionNotificationResponse"""
     raw = request.body.decode("utf-8") or ""
+    
     try:
         data = json.loads(raw)
     except Exception:
-        # Ozow sends x-www-form-urlencoded by default – support both.
         data = request.POST.dict()
 
-    WebhookLog.objects.create(provider="ozow", raw_body=json.dumps(data))
+    # Log everything
+    webhook_log = WebhookLog.objects.create(
+        provider="ozow",
+        event_time=timezone.now(),
+        path=request.path,
+        payload=data,
+        status_code=200,
+    )
 
-    # Normalized keys according to docs
+    # Extract keys (case-insensitive)
     reference = data.get("TransactionReference") or data.get("transactionReference")
     status_text = (data.get("Status") or data.get("status") or "").strip().lower()
+    amount_str = data.get("Amount") or data.get("amount") or "0"
+    transaction_id = data.get("TransactionId") or data.get("transactionId")
 
     if not reference:
-        return Response({"detail": "Missing TransactionReference."}, status=status.HTTP_200_OK)
+        webhook_log.notes = "Missing TransactionReference"
+        webhook_log.save(update_fields=["notes"])
+        return Response({"detail": "Missing reference"}, status=200)
 
-    intent = PaymentIntent.objects.filter(reference=reference, provider="ozow").first()
+    # Find intent
+    intent = PaymentIntent.objects.filter(id=reference, provider="ozow").first()
     if not intent:
-        # Also try by id string (if your model doesn't have 'reference')
-        intent = PaymentIntent.objects.filter(id=reference, provider="ozow").first()
+        webhook_log.notes = f"Intent not found: {reference}"
+        webhook_log.save(update_fields=["notes"])
+        return Response({"detail": "Unknown reference"}, status=200)
 
-    if not intent:
-        return Response({"detail": "Unknown reference."}, status=status.HTTP_200_OK)
+    # Idempotency check
+    if intent.status in ["succeeded", "failed", "cancelled"]:
+        webhook_log.notes = f"Already processed as {intent.status}"
+        webhook_log.save(update_fields=["notes"])
+        return Response({"detail": "Already processed"}, status=200)
 
-    # Idempotency
-    if getattr(intent, "status", "") in {"succeeded", "failed", "cancelled"}:
-        return Response({"detail": "Already processed."}, status=status.HTTP_200_OK)
-
-    if status_text == "complete":
-        _credit_wallet(intent.wallet, intent.amount, ref=getattr(intent, "reference", str(intent.id)), meta=data)
-        try:
+    # Process based on status
+    with db_transaction.atomic():
+        if status_text == "complete":
+            # Credit wallet
+            WalletService.post_credit(
+                user=intent.user,
+                amount=intent.amount,
+                source="ozow_deposit",
+                reference=f"OZOW-{transaction_id or reference}",
+                description=f"Deposit via Ozow (R {intent.amount})",
+                idem=f"ozow-{reference}",
+            )
+            
             intent.status = "succeeded"
-            intent.completed_at = timezone.now()
-            intent.save(update_fields=["status", "completed_at"])
-        except Exception:
-            pass
-    elif status_text in {"cancelled", "error", "abandoned"}:
-        try:
+            intent.provider_reference = transaction_id or intent.provider_reference
+            intent.save(update_fields=["status", "provider_reference"])
+            
+            webhook_log.notes = f"Credited R {intent.amount} to wallet"
+            webhook_log.save(update_fields=["notes"])
+
+        elif status_text in ["cancelled", "error", "abandoned"]:
             intent.status = "failed"
-            intent.completed_at = timezone.now()
-            intent.save(update_fields=["status", "completed_at"])
-        except Exception:
-            pass
+            intent.save(update_fields=["status"])
+            
+            webhook_log.notes = f"Payment failed: {status_text}"
+            webhook_log.save(update_fields=["notes"])
 
     return Response({"ok": True})
-
 
 # ------------------------ Withdraw ------------------------
 class WithdrawRequestView(APIView):
@@ -277,39 +235,67 @@ class WithdrawRequestView(APIView):
 
     def post(self, request):
         amount_raw = str(request.data.get("amount", "")).strip()
-        bank_name = request.data.get("bank_name", "")
-        acc_no = request.data.get("account_number", "")
-        acc_holder = request.data.get("account_holder", "")
-        branch_code = request.data.get("branch_code", "")
-
+        bank_account = request.data.get("bank_account", {})
+        
         if not amount_raw:
-            return Response({"detail": "Amount is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Amount is required."}, status=400)
+        
         try:
             amount = Decimal(amount_raw)
         except InvalidOperation:
-            return Response({"detail": "Invalid amount."}, status=status.HTTP_400_BAD_REQUEST)
-        if amount <= 0:
-            return Response({"detail": "Amount must be greater than zero."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Invalid amount."}, status=400)
+        
+        min_payout = Decimal(getattr(settings, "PAYOUT_MIN_AMOUNT", "10.00"))
+        if amount < min_payout:
+            return Response({"detail": f"Minimum withdrawal is R {min_payout}"}, status=400)
 
         wallet, _ = Wallet.objects.get_or_create(user=request.user)
         if (wallet.balance or Decimal("0")) < amount:
-            return Response({"detail": "Insufficient balance."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Insufficient balance."}, status=400)
 
-        payout = PayoutRequest.objects.create(
-            user=request.user,
-            wallet=wallet,
-            amount=amount,
-            currency="ZAR",
-            bank_name=bank_name,
-            account_number=acc_no,
-            account_holder=acc_holder,
-            branch_code=branch_code,
-            status="requested",
-        )
+        # Extract bank details
+        holder = bank_account.get("holder", "")
+        bank_name = bank_account.get("bank_name", "")
+        acc_no = bank_account.get("account_number", "")
+        branch = bank_account.get("branch_code", "")
 
-        _debit_wallet(wallet, amount, ref=payout.reference, meta={"payout_id": payout.id})
+        if not all([holder, bank_name, acc_no]):
+            return Response({"detail": "Bank details incomplete."}, status=400)
+
+        with db_transaction.atomic():
+            payout = PayoutRequest.objects.create(
+                user=request.user,
+                wallet=wallet,
+                amount=amount,
+                bank_account_last4=acc_no[-4:] if len(acc_no) >= 4 else acc_no,
+                status="pending",
+            )
+
+            # Debit wallet immediately (freeze funds)
+            WalletService.post_debit(
+                user=request.user,
+                amount=amount,
+                source="payout_request",
+                reference=f"PO-{payout.id}",
+                description=f"Withdrawal request (R {amount})",
+                idem=f"payout-{payout.id}",
+            )
+
         return Response({
-            "reference": payout.reference,
+            "id": str(payout.id),
             "status": payout.status,
             "amount": str(amount),
-        }, status=status.HTTP_201_CREATED)
+            "created_at": payout.created_at,
+        }, status=201)
+
+# ------------------------ Vendor Profile endpoint for wallet ops ------------------------
+class MeVendorProfileView(APIView):
+    """Returns minimal vendor info needed for wallet UI"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        wallet, _ = Wallet.objects.get_or_create(user=request.user)
+        return Response({
+            "wallet_balance": str(wallet.balance),
+            "wallet_pending": str(wallet.pending),
+        })

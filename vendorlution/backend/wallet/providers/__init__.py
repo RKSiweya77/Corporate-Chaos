@@ -1,3 +1,9 @@
 # wallet/providers/__init__.py
-from .ozow import OzowPayment   # already added in previous step
-from .peach import PeachPayment
+"""
+Provider exports for the wallet.providers package.
+Expose only the helpers that actually exist in ozow.py.
+"""
+
+from .ozow import build_hosted_payment_url, OzowEnv
+
+__all__ = ["build_hosted_payment_url", "OzowEnv"]

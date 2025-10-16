@@ -1,3 +1,4 @@
+# backend/backend_api/settings.py - COMPLETE COPY-PASTE READY
 from pathlib import Path
 from datetime import timedelta
 
@@ -5,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = "django-insecure-temp-key"
 DEBUG = True
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "*.ngrok.io"]  # Added ngrok support
 
 # ---------------- Installed apps ----------------
 INSTALLED_APPS = [
@@ -22,16 +23,13 @@ INSTALLED_APPS = [
 
     # Local
     "main",
-    "wallet.apps.WalletConfig",  # loads signals via AppConfig
+    "wallet",  # Wallet app
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-
-    # CORS
-    "corsheaders.middleware.CorsMiddleware",
-
+    "corsheaders.middleware.CorsMiddleware",  # CORS before CommonMiddleware
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -124,6 +122,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
 ]
 
+# Allow credentials for session/cookie auth
+CORS_ALLOW_CREDENTIALS = True
+
+# Allow ngrok in development
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True  # Only for dev with ngrok
+
 # Dev fallback vendor (if used by older views)
 DEV_MODE_DEFAULT_VENDOR_ID = 1
 
@@ -132,33 +137,37 @@ DEV_MODE_DEFAULT_VENDOR_ID = 1
 LIVE_MODE = False  # set True in production
 
 # === Ozow (Instant EFT) ===
-# Paste your **SANDBOX** credentials here. In production, replace with live values and set LIVE_MODE=True.
-OZOW_API_KEY = "<sandbox_api_key>"
-OZOW_SITE_CODE = "<sandbox_site_code>"
-OZOW_PRIVATE_KEY = "<sandbox_private_key>"  # used to create HashCheck
+# ⚠️ REPLACE THESE WITH YOUR ACTUAL SANDBOX CREDENTIALS FROM OZOW
+# Get them from: https://ozow.com → Developer Portal
+OZOW_API_KEY = "PLACEHOLDER_REPLACE_ME"  # Replace with your sandbox API key
+OZOW_SITE_CODE = "PLACEHOLDER_REPLACE_ME"  # Replace with your sandbox site code
+OZOW_PRIVATE_KEY = "PLACEHOLDER_REPLACE_ME"  # Replace with your sandbox private key
 
-# Absolute URLs required by Ozow (the view validates these exact names)
+# Absolute URLs required by Ozow
 OZOW_SUCCESS_URL = "http://127.0.0.1:3000/wallet/deposit/success"
-OZOW_CANCEL_URL  = "http://127.0.0.1:3000/wallet/deposit/cancel"
-OZOW_ERROR_URL   = "http://127.0.0.1:3000/wallet/deposit/error"
-OZOW_NOTIFY_URL  = "http://127.0.0.1:8000/api/wallet/webhooks/ozow/"
+OZOW_CANCEL_URL = "http://127.0.0.1:3000/wallet/deposit/cancel"
+OZOW_ERROR_URL = "http://127.0.0.1:3000/wallet/deposit/error"
 
-# Optional legacy alias (kept for compatibility with older code)
-OZOW_RETURN_URL = OZOW_SUCCESS_URL
+# ⚠️ IMPORTANT: When testing locally with ngrok, update this to your ngrok URL:
+# Example: "https://abc123.ngrok.io/api/wallet/webhooks/ozow/"
+OZOW_NOTIFY_URL = "http://127.0.0.1:8000/api/wallet/webhooks/ozow/"
 
-# Environment toggle specifically for the Ozow provider module
-OZOW_IS_TEST = not LIVE_MODE  # True -> staging endpoints, False -> live
+# Environment toggle for Ozow
+OZOW_IS_TEST = not LIVE_MODE  # True -> staging, False -> live
 
-# === Peach (placeholder for later steps) ===
-PEACH_ENTITY_ID = "8ac7a4cxxxxxxx"
-PEACH_API_PASSWORD = "test_peach_pwd"
+# === Peach Payments (Cards/EFT Secure) - PLACEHOLDER ===
+PEACH_ENTITY_ID = "8ac7a4cxxxxxxx"  # Replace when you get credentials
+PEACH_API_PASSWORD = "test_peach_pwd"  # Replace when you get credentials
 PEACH_BASE_URL = "https://eu-test.oppwa.com/v1"
 PEACH_NOTIFY_URL = "http://127.0.0.1:8000/api/wallet/webhooks/peach/"
 
-# === Vouchers (manual) — we’ll replace with provider APIs later ===
+# === Vouchers (1Voucher, Kazang, etc.) ===
 VOUCHER_LIVE = False
 VOUCHER_ACCEPTED_ISSUERS = ["1VOUCHER", "OTT", "BLU", "KAZANG", "FLASH"]
 
 # === Payouts ===
 PAYOUT_LIVE = False
-PAYOUT_MIN_AMOUNT = "10.00"
+PAYOUT_MIN_AMOUNT = "10.00"  # Minimum R 10 withdrawal
+
+# === Platform Fees ===
+PLATFORM_FEE_PERCENT = "0.05"  # 5% platform fee on sales

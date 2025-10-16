@@ -6,6 +6,8 @@ from django.db.models import Prefetch, Q
 from django.contrib.auth.models import User
 from django.db import transaction as db_tx
 from decimal import Decimal
+from wallet.models import Wallet, LedgerEntry
+from wallet.services import WalletService
 
 from .models import (
     ProductCategory,
@@ -665,19 +667,27 @@ class CheckoutView(APIView):
                     price_snapshot=i.product.price,
                 )
 
+            # --- FIXED INDENTATION: move wallet payment block out of the loop ---
             if payment_method == "wallet":
-                wallet, _ = Wallet.objects.get_or_create(user=user, type="customer")
+                wallet, _ = Wallet.objects.get_or_create(user=user)
                 if wallet.balance < total_amount:
                     raise serializers.ValidationError("Insufficient wallet balance.")
+
+                # Debit balance AND hold in escrow (pending)
                 wallet.balance -= total_amount
-                wallet.save()
-                Transaction.objects.create(
+                wallet.pending = (wallet.pending or Decimal("0")) + total_amount
+                wallet.save(update_fields=["balance", "pending"])
+
+                # Log the HOLD (escrow lock)
+                LedgerEntry.objects.create(
                     wallet=wallet,
-                    kind="debit",
+                    type=LedgerEntry.Type.HOLD,
                     amount=total_amount,
-                    description=f"Order #{order.id}",
-                    reference=f"ORD-{order.id}",
+                    reference=f"ORDER-{order.id}",
+                    description=f"Escrow hold for Order #{order.id}",
+                    balance_after=wallet.balance,
                 )
+
                 order.status = Order.Status.PAID
                 order.save()
 
@@ -685,3 +695,74 @@ class CheckoutView(APIView):
             CartItem.objects.filter(cart=cart).delete()
 
         return Response(OrderSerializer(order).data, status=201)
+
+
+class ConfirmDeliveryView(APIView):
+    """
+    Buyer confirms delivery → Release escrow funds to seller
+    POST /api/orders/<order_id>/confirm-delivery/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, order_id):
+        customer = _get_customer(request.user)
+        
+        try:
+            order = Order.objects.select_related('customer').prefetch_related('items__product__vendor').get(
+                id=order_id, 
+                customer=customer
+            )
+        except Order.DoesNotExist:
+            return Response({"detail": "Order not found"}, status=404)
+        
+        # Only allow confirmation for PAID orders
+        if order.status != Order.Status.PAID:
+            return Response({
+                "detail": f"Order must be in PAID status (currently {order.status})"
+            }, status=400)
+        
+        # Get vendor from first order item
+        first_item = order.items.first()
+        if not first_item or not first_item.product or not first_item.product.vendor:
+            return Response({"detail": "Order has no valid vendor"}, status=400)
+        
+        vendor = first_item.product.vendor
+        
+        with db_tx.atomic():
+            # 1. Release buyer's pending (escrow hold)
+            buyer_wallet, _ = Wallet.objects.get_or_create(user=request.user)
+            buyer_wallet.pending = (buyer_wallet.pending or Decimal("0")) - order.total_amount
+            buyer_wallet.save(update_fields=["pending"])
+            
+            LedgerEntry.objects.create(
+                wallet=buyer_wallet,
+                type=LedgerEntry.Type.RELEASE,
+                amount=order.total_amount,
+                reference=f"ORDER-{order.id}-RELEASE",
+                description=f"Released escrow for Order #{order.id}",
+                balance_after=buyer_wallet.balance,
+            )
+            
+            # 2. Calculate platform fee (5%)
+            platform_fee = order.total_amount * Decimal(getattr(settings, "PLATFORM_FEE_PERCENT", "0.05"))
+            vendor_amount = order.total_amount - platform_fee
+            
+            # 3. Credit vendor wallet
+            WalletService.post_credit(
+                user=vendor.user,
+                amount=vendor_amount,
+                source="order_payout",
+                reference=f"ORDER-{order.id}",
+                description=f"Sale payout for Order #{order.id} (R{order.total_amount} - R{platform_fee} fee)",
+                idem=f"order-release-{order.id}",  # Prevent duplicate releases
+            )
+            
+            # 4. Update order status
+            order.status = Order.Status.DELIVERED
+            order.save(update_fields=["status"])
+        
+        return Response({
+            "detail": "Delivery confirmed! Funds released to seller.",
+            "vendor_amount": str(vendor_amount),
+            "platform_fee": str(platform_fee),
+        })

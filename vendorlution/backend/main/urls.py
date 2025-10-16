@@ -90,4 +90,6 @@ urlpatterns = [
 
     # Checkout
     path("checkout/", views.CheckoutView.as_view(), name="checkout"),
+
+    path("orders/<int:order_id>/confirm-delivery/", views.ConfirmDeliveryView.as_view(), name="confirm-delivery"),
 ]
