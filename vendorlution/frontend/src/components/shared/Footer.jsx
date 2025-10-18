@@ -1,58 +1,172 @@
 // src/components/shared/Footer.jsx
 import { Link } from "react-router-dom";
 
-function Footer() {
+export default function Footer() {
+  const currentYear = new Date().getFullYear();
+
   return (
-    <footer className="bg-dark text-light mt-5">
-      <div className="container py-4">
+    <footer className="bg-dark text-light mt-auto">
+      <div className="container py-5">
         <div className="row g-4">
-          <div className="col-md-4">
-            <h5 className="mb-2">Vendorlution</h5>
-            <p className="small text-muted mb-0">
-              A modern marketplace with escrow wallets and trusted vendor–buyer interactions.
+          {/* Brand Section */}
+          <div className="col-lg-4 col-md-6">
+            <h5 className="fw-bold mb-3">
+              <i className="fa fa-shield-alt text-primary me-2" />
+              Vendorlution
+            </h5>
+            <p className="mb-3 text-light-emphasis">
+              A trusted marketplace with escrow protection. Buy and sell securely with instant EFT, 
+              wallet payments, and professional dispute resolution.
             </p>
+            <div className="d-flex flex-wrap gap-2">
+              <a
+                className="btn btn-sm btn-outline-light"
+                href="mailto:support@vendorlution.com"
+              >
+                <i className="fa fa-envelope me-1" />
+                Email Support
+              </a>
+              <a
+                className="btn btn-sm btn-outline-light"
+                href="https://help.vendorlution.com"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <i className="fa fa-question-circle me-1" />
+                Help Center
+              </a>
+            </div>
           </div>
 
-          <div className="col-md-4">
-            <h6 className="mb-2">Quick Links</h6>
-            <ul className="list-unstyled mb-0">
-              <li className="mb-1">
-                <Link className="text-decoration-none text-light" to="/categories">
+          {/* Marketplace Links */}
+          <div className="col-lg-2 col-md-3 col-sm-6">
+            <h6 className="text-uppercase small fw-bold text-muted mb-3">Marketplace</h6>
+            <ul className="list-unstyled">
+              <li className="mb-2">
+                <Link className="text-light text-decoration-none" to="/products">
+                  Browse Products
+                </Link>
+              </li>
+              <li className="mb-2">
+                <Link className="text-light text-decoration-none" to="/vendors">
+                  Discover Vendors
+                </Link>
+              </li>
+              <li className="mb-2">
+                <Link className="text-light text-decoration-none" to="/categories">
                   Categories
                 </Link>
               </li>
-              <li className="mb-1">
-                <Link className="text-decoration-none text-light" to="/products">
-                  All Products
-                </Link>
-              </li>
-              <li>
-                <Link className="text-decoration-none text-light" to="/customer/support">
-                  Support
+              <li className="mb-2">
+                <Link className="text-light text-decoration-none" to="/deals">
+                  Special Deals
                 </Link>
               </li>
             </ul>
           </div>
 
-          <div className="col-md-4">
-            <h6 className="mb-2">Follow Us</h6>
-            <ul className="list-inline mb-0">
-              <li className="list-inline-item me-3"><i className="fa-brands fa-facebook"></i></li>
-              <li className="list-inline-item me-3"><i className="fa-brands fa-twitter"></i></li>
-              <li className="list-inline-item"><i className="fa-brands fa-instagram"></i></li>
+          {/* Account Links */}
+          <div className="col-lg-2 col-md-3 col-sm-6">
+            <h6 className="text-uppercase small fw-bold text-muted mb-3">Your Account</h6>
+            <ul className="list-unstyled">
+              <li className="mb-2">
+                <Link className="text-light text-decoration-none" to="/wallet">
+                  Wallet
+                </Link>
+              </li>
+              <li className="mb-2">
+                <Link className="text-light text-decoration-none" to="/orders">
+                  Orders
+                </Link>
+              </li>
+              <li className="mb-2">
+                <Link className="text-light text-decoration-none" to="/wishlist">
+                  Wishlist
+                </Link>
+              </li>
+              <li className="mb-2">
+                <Link className="text-light text-decoration-none" to="/settings">
+                  Settings
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Company Links */}
+          <div className="col-lg-2 col-md-3 col-sm-6">
+            <h6 className="text-uppercase small fw-bold text-muted mb-3">Company</h6>
+            <ul className="list-unstyled">
+              <li className="mb-2">
+                <Link className="text-light text-decoration-none" to="/about">
+                  About Us
+                </Link>
+              </li>
+              <li className="mb-2">
+                <Link className="text-light text-decoration-none" to="/how-it-works">
+                  How It Works
+                </Link>
+              </li>
+              <li className="mb-2">
+                <Link className="text-light text-decoration-none" to="/trust-safety">
+                  Trust & Safety
+                </Link>
+              </li>
+              <li className="mb-2">
+                <Link className="text-light text-decoration-none" to="/careers">
+                  Careers
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Legal Links */}
+          <div className="col-lg-2 col-md-3 col-sm-6">
+            <h6 className="text-uppercase small fw-bold text-muted mb-3">Legal</h6>
+            <ul className="list-unstyled">
+              <li className="mb-2">
+                <Link className="text-light text-decoration-none" to="/terms">
+                  Terms of Service
+                </Link>
+              </li>
+              <li className="mb-2">
+                <Link className="text-light text-decoration-none" to="/privacy">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li className="mb-2">
+                <Link className="text-light text-decoration-none" to="/cookie-policy">
+                  Cookie Policy
+                </Link>
+              </li>
+              <li className="mb-2">
+                <Link className="text-light text-decoration-none" to="/disputes">
+                  Dispute Resolution
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
 
         <hr className="border-secondary my-4" />
 
-        <div className="d-flex justify-content-between small text-muted">
-          <span>© {new Date().getFullYear()} Vendorlution. All rights reserved.</span>
-          <span>Made with ❤️</span>
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-center">
+          <div className="mb-2 mb-md-0">
+            <span className="text-muted">
+              &copy; {currentYear} Vendorlution. All rights reserved.
+            </span>
+          </div>
+          <div className="d-flex gap-3">
+            <span className="text-muted small">
+              <i className="fa fa-shield-alt me-1 text-primary" />
+              Protected by Escrow
+            </span>
+            <span className="text-muted small">
+              <i className="fa fa-lock me-1 text-success" />
+              Secure Payments
+            </span>
+          </div>
         </div>
       </div>
     </footer>
   );
 }
-
-export default Footer;

@@ -1,116 +1,173 @@
-// frontend/src/components/wallet/WalletOverview.jsx - COMPLETE VERSION
-import React, { useEffect, useState } from "react";
-import api from "../../api/axios";
+// src/components/wallet/WalletOverview.jsx
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import api from "../../api/axios";
+import API_ENDPOINTS from "../../api/endpoints";
+import LoadingSpinner from "../shared/LoadingSpinner";
+import EmptyState from "../shared/EmptyState";
+import { useAuth } from "../../context/AuthContext";
+import { ZAR } from "../../utils/formatters";
 
 export default function WalletOverview() {
+  const { isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const [wallet, setWallet] = useState(null);
+  const [wallet, setWallet] = useState({ balance: 0, pending: 0, currency: "ZAR", recent: [] });
+  const [recent, setRecent] = useState([]);
 
   useEffect(() => {
-    let alive = true;
-    (async () => {
+    async function load() {
+      setErr("");
       try {
         setLoading(true);
-        setErr("");
-        const res = await api.get("/wallet/");
-        if (!alive) return;
-        setWallet(res.data);
+        const w = await api.get(API_ENDPOINTS.wallet.me);
+        const data = w.data || {};
+        
+        setWallet({
+          balance: Number(data.balance || 0),
+          pending: Number(data.pending || 0),
+          currency: data.currency || "ZAR",
+          recent: Array.isArray(data.recent) ? data.recent : [],
+        });
+
+        if (Array.isArray(data.recent) && data.recent.length) {
+          setRecent(data.recent);
+        } else {
+          try {
+            const t = await api.get(API_ENDPOINTS.wallet.transactions);
+            const rows = Array.isArray(t.data?.results) ? t.data.results : t.data || [];
+            setRecent(rows.slice(0, 5));
+          } catch {
+            setRecent([]);
+          }
+        }
       } catch (e) {
-        if (!alive) return;
-        setErr(e?.response?.data?.detail || "Failed to load wallet");
+        const msg = e?.response?.data?.detail || "Failed to load wallet.";
+        setErr(msg);
       } finally {
-        if (alive) setLoading(false);
+        setLoading(false);
       }
-    })();
-    return () => (alive = false);
-  }, []);
+    }
+    if (isAuthenticated) load();
+    else setLoading(false);
+  }, [isAuthenticated]);
 
-  if (loading) return <div className="text-center py-4">Loading wallet...</div>;
-  if (err) return <div className="alert alert-danger">{err}</div>;
-  if (!wallet) return null;
+  const totals = useMemo(() => {
+    const total = (wallet.balance || 0) + (wallet.pending || 0);
+    return { total };
+  }, [wallet]);
 
-  const balance = Number(wallet.balance || 0);
-  const pending = Number(wallet.pending || 0);
+  if (!isAuthenticated) {
+    return (
+      <div className="container py-5">
+        <div className="alert alert-info">Please sign in to view your wallet.</div>
+      </div>
+    );
+  }
+
+  if (loading) return <LoadingSpinner fullPage />;
 
   return (
-    <div>
-      {/* Balance Cards */}
-      <div className="row g-3 mb-4">
-        <div className="col-md-6">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body text-center">
-              <h6 className="text-muted mb-2">Available Balance</h6>
-              <h2 className="text-success fw-bold mb-0">R {balance.toFixed(2)}</h2>
-              <p className="text-muted small mt-2 mb-0">Ready to spend or withdraw</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="col-md-6">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body text-center">
-              <h6 className="text-muted mb-2">Pending (Escrow)</h6>
-              <h2 className="text-warning fw-bold mb-0">R {pending.toFixed(2)}</h2>
-              <p className="text-muted small mt-2 mb-0">Held for active orders</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="d-flex gap-2 mb-4">
-        <Link to="/wallet/deposit" className="btn btn-success flex-fill">
-          <i className="fa fa-plus me-2"></i>Deposit
-        </Link>
-        <Link to="/wallet/withdraw" className="btn btn-outline-dark flex-fill">
-          <i className="fa fa-arrow-up me-2"></i>Withdraw
-        </Link>
-        <Link to="/wallet/transactions" className="btn btn-outline-secondary flex-fill">
-          <i className="fa fa-list me-2"></i>History
-        </Link>
-      </div>
-
-      {/* Recent Transactions */}
-      <h5 className="mb-3">Recent Activity</h5>
-      {wallet.recent?.length > 0 ? (
-        <div className="list-group shadow-sm">
-          {wallet.recent.map((tx) => {
-            const amt = Number(tx.amount || 0);
-            const isCredit = tx.entry_type === "CREDIT" || tx.entry_type === "credit";
-            return (
-              <div key={tx.id} className="list-group-item d-flex justify-content-between align-items-start">
-                <div className="flex-grow-1">
-                  <div className="fw-semibold d-flex align-items-center gap-2">
-                    <i className={`fa ${isCredit ? 'fa-arrow-down text-success' : 'fa-arrow-up text-danger'}`}></i>
-                    {tx.description || tx.reference || "Transaction"}
-                  </div>
-                  <div className="small text-muted">
-                    {new Date(tx.created_at).toLocaleString()} • Ref: {tx.reference || "—"}
-                  </div>
-                </div>
-                <div className={`text-end ${isCredit ? 'text-success' : 'text-danger'}`}>
-                  <div className="fw-bold">{isCredit ? '+' : '-'}R {Math.abs(amt).toFixed(2)}</div>
-                  <div className="small text-muted">Balance: R {Number(tx.balance_after || 0).toFixed(2)}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-center text-muted py-4">
-          <i className="fa fa-wallet fa-2x mb-2"></i>
-          <p>No transactions yet. Make your first deposit to get started!</p>
+    <div className="container py-5">
+      {err && (
+        <div className="alert alert-danger d-flex justify-content-between align-items-center">
+          <span>{err}</span>
+          <button className="btn-close" onClick={() => setErr("")} />
         </div>
       )}
 
-      {/* Info Box */}
-      <div className="alert alert-info mt-4">
-        <i className="fa fa-info-circle me-2"></i>
-        <strong>How it works:</strong> Deposit funds instantly via Ozow (Instant EFT). 
-        When you buy, funds are held securely until delivery is confirmed. 
-        Sellers can withdraw earnings anytime (min R 10).
+      <div className="row g-3 mb-4">
+        <div className="col-md-4">
+          <div className="card h-100 border-0 shadow-sm">
+            <div className="card-body">
+              <div className="text-muted small">Available Balance</div>
+              <div className="fs-3 fw-bold text-success">{ZAR(wallet.balance)}</div>
+            </div>
+            <div className="card-footer bg-transparent">
+              <Link to="/wallet/deposit" className="btn btn-dark w-100">
+                <i className="fa fa-arrow-down me-2" />
+                Deposit
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-md-4">
+          <div className="card h-100 border-0 shadow-sm">
+            <div className="card-body">
+              <div className="text-muted small">In Escrow (Pending)</div>
+              <div className="fs-3 fw-bold text-warning">{ZAR(wallet.pending)}</div>
+            </div>
+            <div className="card-footer bg-transparent">
+              <Link to="/customer/orders" className="btn btn-outline-dark w-100">
+                View Orders
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-md-4">
+          <div className="card h-100 border-0 shadow-sm">
+            <div className="card-body">
+              <div className="text-muted small">Total Funds (Balance + Escrow)</div>
+              <div className="fs-3 fw-bold text-primary">{ZAR(totals.total)}</div>
+            </div>
+            <div className="card-footer bg-transparent">
+              <Link to="/wallet/withdraw" className="btn btn-outline-dark w-100">
+                <i className="fa fa-arrow-up me-2" />
+                Withdraw
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card border-0 shadow-sm">
+        <div className="card-header d-flex align-items-center justify-content-between bg-white">
+          <span className="fw-bold">Recent Transactions</span>
+          <Link to="/wallet/transactions" className="btn btn-sm btn-outline-dark">
+            View all
+          </Link>
+        </div>
+        <div className="card-body">
+          {recent.length === 0 ? (
+            <EmptyState 
+              title="No transactions yet" 
+              subtitle="Your wallet activity will show here." 
+            />
+          ) : (
+            <div className="table-responsive">
+              <table className="table align-middle">
+                <thead className="table-light">
+                  <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Reference</th>
+                    <th className="text-end">Amount</th>
+                    <th className="text-end">Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recent.map((t) => {
+                    const amt = Number(t.amount || 0);
+                    const isCredit = (t.entry_type || t.type || "").toLowerCase().includes("credit");
+                    return (
+                      <tr key={t.id}>
+                        <td>{new Date(t.created_at).toLocaleDateString()}</td>
+                        <td>{t.description || (isCredit ? "Credit" : "Debit")}</td>
+                        <td><code>{t.reference || "-"}</code></td>
+                        <td className={`text-end fw-bold ${isCredit ? "text-success" : "text-danger"}`}>
+                          {isCredit ? "+" : "-"}{ZAR(Math.abs(amt))}
+                        </td>
+                        <td className="text-end fw-medium">{ZAR(t.balance_after || 0)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

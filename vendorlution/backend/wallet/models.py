@@ -1,4 +1,4 @@
-# backend/wallet/models.py - COMPLETE COPY-PASTE READY
+# wallet/models.py - UPDATED with proper LedgerEntry fields
 import uuid
 from decimal import Decimal
 from django.conf import settings
@@ -29,6 +29,7 @@ class Wallet(models.Model):
             reference=reference,
             description=reason,
             balance_after=self.balance,
+            status="posted",
         )
 
     def debit(self, amount: Decimal, reason: str = "", reference: str = ""):
@@ -42,6 +43,7 @@ class Wallet(models.Model):
             reference=reference,
             description=reason,
             balance_after=self.balance,
+            status="posted",
         )
 
 
@@ -60,6 +62,8 @@ class LedgerEntry(models.Model):
     balance_after = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     reference = models.CharField(max_length=64, blank=True, default="")
     description = models.CharField(max_length=255, blank=True, default="")
+    source = models.CharField(max_length=64, blank=True, default="")  # NEW: track source
+    status = models.CharField(max_length=16, default="posted")  # NEW: posted/pending/cancelled
     idempotency_key = models.CharField(max_length=64, blank=True, null=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -107,7 +111,7 @@ class PaymentIntent(models.Model):
     checksum = models.CharField(max_length=128, blank=True, default="")
 
     description = models.CharField(max_length=255, blank=True, default="")
-    metadata = models.JSONField(blank=True, null=True)
+    metadata = models.JSONField(blank=True, null=True, default=dict)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -1,3 +1,4 @@
+# main/views.py - COMPLETE with vendor products, checkout, shipments, disputes
 from rest_framework import generics, filters, permissions, status, serializers
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
@@ -5,54 +6,38 @@ from rest_framework.response import Response
 from django.db.models import Prefetch, Q
 from django.contrib.auth.models import User
 from django.db import transaction as db_tx
+from django.conf import settings
 from decimal import Decimal
-from wallet.models import Wallet, LedgerEntry
+
+from wallet.models import Wallet, LedgerEntry, PaymentIntent
 from wallet.services import WalletService
 
 from .models import (
-    ProductCategory,
-    VendorProfile,
-    Product,
-    ProductRating,
-    CustomerProfile,
-    Wishlist, Cart, CartItem,
+    ProductCategory, VendorProfile, Product, ProductRating, ProductImage,
+    CustomerProfile, Wishlist, Cart, CartItem,
     Order, OrderItem,
-    Wallet, Transaction, Payout,
-    Discount,
-    Conversation, Message,
-    PaymentMethod,
-    CustomerAddress, Notification, SupportTicket, ResolutionCase,
+    Wallet as OldWallet, Transaction, Payout,
+    Discount, Conversation, Message,
+    PaymentMethod, CustomerAddress, Notification, SupportTicket, ResolutionCase,
 )
-from .serializers import (
-    # Public/catalog
-    ProductCategorySerializer,
-    VendorProfileSerializer,
-    VendorLiteSerializer,
-    VendorProfileWriteSerializer,
-    ProductListSerializer,
-    ProductDetailSerializer,
-    ProductCreateSerializer,
-    ProductRatingSerializer,
+from .models_extended import Shipment, Dispute
 
-    # Stateful
-    WishlistSerializer, CartSerializer, CartItemSerializer,
-    OrderSerializer,
+from .serializers import (
+    ProductCategorySerializer, VendorProfileSerializer, VendorLiteSerializer,
+    VendorProfileWriteSerializer, ProductListSerializer, ProductDetailSerializer,
+    ProductCreateSerializer, ProductRatingSerializer,
+    WishlistSerializer, CartSerializer, CartItemSerializer, OrderSerializer,
     WalletSerializer, TransactionSerializer, PayoutSerializer,
     DiscountSerializer, DiscountCreateSerializer,
     ConversationSerializer, MessageSerializer, PaymentMethodSerializer,
-
-    # Extra stateful
-    CustomerAddressSerializer, NotificationSerializer, SupportTicketSerializer, ResolutionCaseSerializer,
-
-    # Auth
-    RegisterSerializer, MeSerializer, UserPublicSerializer,
+    CustomerAddressSerializer, NotificationSerializer, SupportTicketSerializer,
+    ResolutionCaseSerializer, RegisterSerializer, MeSerializer, UserPublicSerializer,
 )
 
 # ============================================================
-# Public Endpoints — Catalog & Ratings
+# Public Endpoints – Catalog & Ratings
 # ============================================================
 
-# --------- Categories ---------
 class CategoryListView(generics.ListAPIView):
     queryset = ProductCategory.objects.all().order_by("title")
     serializer_class = ProductCategorySerializer
@@ -67,7 +52,6 @@ class CategoryAllView(generics.ListAPIView):
     pagination_class = None
 
 
-# --------- Products ---------
 class ProductListCreateView(generics.ListCreateAPIView):
     queryset = Product.objects.filter(is_active=True).order_by("-created_at")
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -80,11 +64,39 @@ class ProductListCreateView(generics.ListCreateAPIView):
             return ProductCreateSerializer
         return ProductListSerializer
 
+    def perform_create(self, serializer):
+        """Set vendor from authenticated user"""
+        vendor = VendorProfile.objects.filter(user=self.request.user).first()
+        if not vendor:
+            raise serializers.ValidationError("Vendor profile required")
+        serializer.save(vendor=vendor)
 
-class ProductDetailView(generics.RetrieveAPIView):
+
+class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductDetailSerializer
     lookup_field = "pk"
+
+    def get_permissions(self):
+        if self.request.method in ["PUT", "PATCH", "DELETE"]:
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
+
+    def perform_update(self, serializer):
+        """Only vendor who owns the product can update"""
+        product = self.get_object()
+        vendor = VendorProfile.objects.filter(user=self.request.user).first()
+        if not vendor or product.vendor != vendor:
+            raise permissions.PermissionDenied("Not authorized")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        """Soft delete - set is_active=False"""
+        vendor = VendorProfile.objects.filter(user=self.request.user).first()
+        if not vendor or instance.vendor != vendor:
+            raise permissions.PermissionDenied("Not authorized")
+        instance.is_active = False
+        instance.save()
 
 
 class ProductNewListView(generics.ListAPIView):
@@ -105,7 +117,6 @@ class ProductPopularListView(generics.ListAPIView):
         return Product.objects.filter(is_active=True).order_by("-rating_avg", "-created_at")[:limit]
 
 
-# --------- Vendors ---------
 class VendorFeaturedListView(generics.ListAPIView):
     serializer_class = VendorProfileSerializer
     pagination_class = None
@@ -141,12 +152,8 @@ class VendorBySlugView(generics.RetrieveAPIView):
     lookup_field = "slug"
 
 
-# --------- Ratings ---------
 class ProductRatingListCreateView(generics.ListCreateAPIView):
-    """
-    GET: list ratings (public)
-    POST: create rating (auth) — customer is taken from request.user
-    """
+    """GET: list ratings (public), POST: create rating (auth)"""
     queryset = ProductRating.objects.all().order_by("-created_at")
     serializer_class = ProductRatingSerializer
 
@@ -161,7 +168,7 @@ class ProductRatingListCreateView(generics.ListCreateAPIView):
 
 
 # ============================================================
-# Auth helpers (register/me/create-vendor)
+# Auth helpers
 # ============================================================
 
 class RegisterView(generics.CreateAPIView):
@@ -190,10 +197,7 @@ class MeView(APIView):
         return Response(data)
 
     def patch(self, request):
-        """
-        Update basic user fields and customer.mobile
-        Body: {first_name?, last_name?, email?, mobile?}
-        """
+        """Update basic user fields and customer.mobile"""
         user = request.user
         customer, _ = CustomerProfile.objects.get_or_create(user=user)
         first = request.data.get("first_name")
@@ -233,7 +237,7 @@ class CreateVendorView(APIView):
 
 
 # ============================================================
-# Stateful helpers
+# Helpers
 # ============================================================
 
 def _get_customer(user):
@@ -242,13 +246,17 @@ def _get_customer(user):
     customer, _ = CustomerProfile.objects.get_or_create(user=user)
     return customer
 
+
 def _get_vendor(user):
     if not user.is_authenticated:
         return None
     return VendorProfile.objects.filter(user=user).first()
 
 
-# ---------- Wishlist ----------
+# ============================================================
+# Wishlist
+# ============================================================
+
 class WishlistListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = WishlistSerializer
@@ -271,7 +279,10 @@ class WishlistDetailView(generics.DestroyAPIView):
         return Wishlist.objects.filter(customer=customer)
 
 
-# ---------- Cart ----------
+# ============================================================
+# Cart
+# ============================================================
+
 class CartDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -327,7 +338,10 @@ class CartItemUpdateDeleteView(APIView):
         return Response(CartSerializer(cart).data)
 
 
-# ---------- Orders ----------
+# ============================================================
+# Orders
+# ============================================================
+
 class MyOrdersView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = OrderSerializer
@@ -359,7 +373,10 @@ class VendorOrdersView(generics.ListAPIView):
         )
 
 
-# ---------- Wallet & Transactions ----------
+# ============================================================
+# Wallet & Transactions (old models - keep for backward compat)
+# ============================================================
+
 class MyWalletView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -373,7 +390,7 @@ class MyWalletView(APIView):
             wtype = "vendor"
         else:
             wtype = "customer"
-        wallet, _ = Wallet.objects.get_or_create(user=user, type=wtype)
+        wallet, _ = OldWallet.objects.get_or_create(user=user, type=wtype)
         return Response(WalletSerializer(wallet).data)
 
 
@@ -396,7 +413,7 @@ class WalletDepositView(APIView):
         if amount <= 0:
             return Response({"detail": "Invalid amount"}, status=400)
         wallet_type = request.data.get("type") or "customer"
-        wallet, _ = Wallet.objects.get_or_create(user=request.user, type=wallet_type)
+        wallet, _ = OldWallet.objects.get_or_create(user=request.user, type=wallet_type)
         wallet.balance += amount
         wallet.save()
         Transaction.objects.create(wallet=wallet, kind="credit", amount=amount, description="Deposit")
@@ -411,7 +428,7 @@ class WalletWithdrawView(APIView):
         if amount <= 0:
             return Response({"detail": "Invalid amount"}, status=400)
         wallet_type = request.data.get("type") or "customer"
-        wallet, _ = Wallet.objects.get_or_create(user=request.user, type=wallet_type)
+        wallet, _ = OldWallet.objects.get_or_create(user=request.user, type=wallet_type)
         if wallet.balance < amount:
             return Response({"detail": "Insufficient balance"}, status=400)
         wallet.balance -= amount
@@ -420,7 +437,10 @@ class WalletWithdrawView(APIView):
         return Response(WalletSerializer(wallet).data, status=201)
 
 
-# ---------- Payouts ----------
+# ============================================================
+# Payouts
+# ============================================================
+
 class MyPayoutsView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = PayoutSerializer
@@ -432,7 +452,10 @@ class MyPayoutsView(generics.ListAPIView):
         return Payout.objects.filter(vendor=vendor).order_by("-created_at")
 
 
-# ---------- Discounts ----------
+# ============================================================
+# Discounts
+# ============================================================
+
 class MyDiscountsView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -452,7 +475,10 @@ class MyDiscountsView(generics.ListCreateAPIView):
         serializer.save(vendor=vendor)
 
 
-# ---------- Payment Methods ----------
+# ============================================================
+# Payment Methods
+# ============================================================
+
 class MyPaymentMethodsView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = PaymentMethodSerializer
@@ -462,7 +488,10 @@ class MyPaymentMethodsView(generics.ListAPIView):
         return PaymentMethod.objects.filter(customer=customer).order_by("-created_at")
 
 
-# ---------- Conversations & Messages ----------
+# ============================================================
+# Conversations & Messages
+# ============================================================
+
 class MyConversationsView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = ConversationSerializer
@@ -478,10 +507,6 @@ class MyConversationsView(generics.ListCreateAPIView):
         return qs.select_related("buyer__user", "vendor__user").order_by("-last_message_at", "-created_at").distinct()
 
     def perform_create(self, serializer):
-        """
-        Reuse an existing conversation for (buyer, vendor) if it exists.
-        This avoids IntegrityError on the unique (buyer, vendor) constraint.
-        """
         customer = _get_customer(self.request.user)
         vendor_id = self.request.data.get("vendor_id")
         if not (customer and vendor_id):
@@ -539,7 +564,10 @@ class ConversationMessagesView(generics.ListCreateAPIView):
         conv.save(update_fields=["last_message_at"])
 
 
-# ---------- Addresses ----------
+# ============================================================
+# Addresses
+# ============================================================
+
 class MyAddressListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = CustomerAddressSerializer
@@ -569,7 +597,10 @@ class MyAddressDetailView(generics.RetrieveUpdateDestroyAPIView):
             CustomerAddress.objects.filter(customer=obj.customer).exclude(pk=obj.pk).update(is_default=False)
 
 
-# ---------- Notifications ----------
+# ============================================================
+# Notifications
+# ============================================================
+
 class MyNotificationsView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = NotificationSerializer
@@ -591,7 +622,10 @@ class NotificationMarkReadView(APIView):
         return Response({"detail": "ok"})
 
 
-# ---------- Support ----------
+# ============================================================
+# Support
+# ============================================================
+
 class MySupportTicketsView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = SupportTicketSerializer
@@ -603,7 +637,10 @@ class MySupportTicketsView(generics.ListCreateAPIView):
         serializer.save(user=self.request.user)
 
 
-# ---------- Resolution Center ----------
+# ============================================================
+# Resolution Center
+# ============================================================
+
 class MyResolutionCasesView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = ResolutionCaseSerializer
@@ -615,18 +652,22 @@ class MyResolutionCasesView(generics.ListCreateAPIView):
         serializer.save(opened_by=self.request.user)
 
 
-# ---------- Checkout ----------
+# ============================================================
+# CHECKOUT WITH OZOW INTEGRATION
+# ============================================================
+
 class CheckoutView(APIView):
     """
     POST /api/checkout/
-    Body:
-    {
+    Body: {
       "delivery_method": "pargo"|"courier"|"postnet"|"pickup",
-      "payment_method": "wallet"|"ozow"|"mobicred",
+      "payment_method": "wallet"|"ozow",
       "protection_fee": number,
       "shipping_fee": number,
       "address_snapshot": string
     }
+    Returns: For Ozow -> { ozow_redirect_url, order_id }
+             For wallet -> { order: {...} }
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -635,6 +676,7 @@ class CheckoutView(APIView):
         customer = _get_customer(user)
         cart, _ = Cart.objects.get_or_create(customer=customer)
         items = list(CartItem.objects.select_related("product").filter(cart=cart))
+        
         if not items:
             return Response({"detail": "Cart is empty"}, status=400)
 
@@ -644,21 +686,22 @@ class CheckoutView(APIView):
         shipping_fee = Decimal(str(request.data.get("shipping_fee") or "0"))
         address_snapshot = request.data.get("address_snapshot") or ""
 
+        # Server-side price recalculation (security)
         subtotal = sum((i.product.price * i.quantity) for i in items)
         total_amount = subtotal + protection_fee + shipping_fee
 
         with db_tx.atomic():
+            # Create order
             order = Order.objects.create(
                 customer=customer,
                 status=Order.Status.PENDING,
                 total_amount=total_amount,
-                # The following fields assume you will add them in a migration
-                # (ok to keep here; they won't execute until you POST /checkout)
                 delivery_method=delivery_method,
                 shipping_fee=shipping_fee,
                 protection_fee=protection_fee,
                 shipping_address_snapshot=address_snapshot,
             )
+            
             for i in items:
                 OrderItem.objects.create(
                     order=order,
@@ -667,9 +710,37 @@ class CheckoutView(APIView):
                     price_snapshot=i.product.price,
                 )
 
-            # --- FIXED INDENTATION: move wallet payment block out of the loop ---
-            if payment_method == "wallet":
+            # Payment handling
+            if payment_method == "ozow":
+                # Create payment intent and redirect to Ozow
                 wallet, _ = Wallet.objects.get_or_create(user=user)
+                intent = PaymentIntent.objects.create(
+                    user=user,
+                    wallet=wallet,
+                    provider="ozow",
+                    kind="payment",
+                    amount=total_amount,
+                    currency="ZAR",
+                    status="created",
+                    metadata={"order_id": order.id},
+                )
+                
+                # Clear cart
+                CartItem.objects.filter(cart=cart).delete()
+                
+                return Response({
+                    "payment_method": "ozow",
+                    "order_id": order.id,
+                    "intent_id": str(intent.id),
+                    "amount": str(total_amount),
+                    "next_step": "redirect_to_ozow",
+                    "message": "Use /api/wallet/ozow/deposit/start/ with intent_id to get redirect URL"
+                }, status=201)
+            
+            elif payment_method == "wallet":
+                # Unified wallet from wallet app
+                wallet, _ = Wallet.objects.get_or_create(user=user)
+                
                 if wallet.balance < total_amount:
                     raise serializers.ValidationError("Insufficient wallet balance.")
 
@@ -686,16 +757,25 @@ class CheckoutView(APIView):
                     reference=f"ORDER-{order.id}",
                     description=f"Escrow hold for Order #{order.id}",
                     balance_after=wallet.balance,
+                    source="order_payment",
+                    status="posted",
                 )
 
                 order.status = Order.Status.PAID
                 order.save()
 
-            # clear cart
-            CartItem.objects.filter(cart=cart).delete()
+                # Clear cart
+                CartItem.objects.filter(cart=cart).delete()
 
-        return Response(OrderSerializer(order).data, status=201)
+                return Response(OrderSerializer(order).data, status=201)
+            
+            else:
+                return Response({"detail": "Invalid payment method"}, status=400)
 
+
+# ============================================================
+# CONFIRM DELIVERY (Release Escrow)
+# ============================================================
 
 class ConfirmDeliveryView(APIView):
     """
@@ -741,6 +821,8 @@ class ConfirmDeliveryView(APIView):
                 reference=f"ORDER-{order.id}-RELEASE",
                 description=f"Released escrow for Order #{order.id}",
                 balance_after=buyer_wallet.balance,
+                source="escrow_release",
+                status="posted",
             )
             
             # 2. Calculate platform fee (5%)
@@ -754,7 +836,7 @@ class ConfirmDeliveryView(APIView):
                 source="order_payout",
                 reference=f"ORDER-{order.id}",
                 description=f"Sale payout for Order #{order.id} (R{order.total_amount} - R{platform_fee} fee)",
-                idem=f"order-release-{order.id}",  # Prevent duplicate releases
+                idem=f"order-release-{order.id}",
             )
             
             # 4. Update order status
@@ -766,3 +848,368 @@ class ConfirmDeliveryView(APIView):
             "vendor_amount": str(vendor_amount),
             "platform_fee": str(platform_fee),
         })
+
+
+# ============================================================
+# SHIPMENT MANAGEMENT
+# ============================================================
+
+class ShipmentCreateView(APIView):
+    """POST /api/orders/<order_id>/shipment/ - Vendor adds shipment info"""
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, order_id):
+        vendor = _get_vendor(request.user)
+        if not vendor:
+            return Response({"detail": "Vendor profile required"}, status=403)
+
+        try:
+            order = Order.objects.prefetch_related("items__product__vendor").get(id=order_id)
+        except Order.DoesNotExist:
+            return Response({"detail": "Order not found"}, status=404)
+
+        # Verify vendor owns at least one product in order
+        vendor_owns = any(item.product.vendor == vendor for item in order.items.all())
+        if not vendor_owns:
+            return Response({"detail": "Not authorized"}, status=403)
+
+        # Check if shipment already exists
+        if hasattr(order, "shipment"):
+            return Response({"detail": "Shipment already exists"}, status=400)
+
+        method = request.data.get("method", "courier")
+        tracking_number = request.data.get("tracking_number", "")
+        carrier_name = request.data.get("carrier_name", "")
+        pargo_code = request.data.get("pargo_code", "")
+        pickup_point = request.data.get("pickup_point", "")
+        proof_of_dropoff = request.FILES.get("proof_of_dropoff")
+        notes = request.data.get("notes", "")
+
+        shipment = Shipment.objects.create(
+            order=order,
+            method=method,
+            tracking_number=tracking_number,
+            carrier_name=carrier_name,
+            pargo_code=pargo_code,
+            pickup_point=pickup_point,
+            proof_of_dropoff=proof_of_dropoff,
+            notes=notes,
+        )
+        shipment.mark_shipped()
+
+        return Response({
+            "id": shipment.id,
+            "order_id": order.id,
+            "method": shipment.method,
+            "status": shipment.status,
+            "tracking_number": shipment.tracking_number,
+            "shipped_at": shipment.shipped_at,
+        }, status=201)
+
+
+class ShipmentDetailView(APIView):
+    """GET /api/shipments/<shipment_id>/ - View shipment details"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, shipment_id):
+        try:
+            shipment = Shipment.objects.select_related("order__customer__user").get(id=shipment_id)
+        except Shipment.DoesNotExist:
+            return Response({"detail": "Not found"}, status=404)
+
+        # Check authorization (buyer or vendor)
+        customer = _get_customer(request.user)
+        vendor = _get_vendor(request.user)
+        
+        is_buyer = customer and shipment.order.customer == customer
+        is_vendor = vendor and any(item.product.vendor == vendor for item in shipment.order.items.all())
+        
+        if not (is_buyer or is_vendor):
+            return Response({"detail": "Not authorized"}, status=403)
+
+        return Response({
+            "id": shipment.id,
+            "order_id": shipment.order_id,
+            "method": shipment.method,
+            "status": shipment.status,
+            "tracking_number": shipment.tracking_number,
+            "carrier_name": shipment.carrier_name,
+            "pargo_code": shipment.pargo_code,
+            "pickup_point": shipment.pickup_point,
+            "proof_of_dropoff": shipment.proof_of_dropoff.url if shipment.proof_of_dropoff else None,
+            "shipped_at": shipment.shipped_at,
+            "delivered_at": shipment.delivered_at,
+            "expected_delivery": shipment.expected_delivery,
+            "notes": shipment.notes,
+        })
+
+
+# ============================================================
+# DISPUTE MANAGEMENT
+# ============================================================
+
+class DisputeCreateView(APIView):
+    """POST /api/orders/<order_id>/dispute/ - Buyer opens dispute"""
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, order_id):
+        customer = _get_customer(request.user)
+        
+        try:
+            order = Order.objects.get(id=order_id, customer=customer)
+        except Order.DoesNotExist:
+            return Response({"detail": "Order not found"}, status=404)
+
+        # Check if dispute already exists
+        if order.disputes.filter(status__in=["open", "under_review"]).exists():
+            return Response({"detail": "Active dispute already exists"}, status=400)
+
+        reason = request.data.get("reason", "other")
+        description = request.data.get("description", "")
+        evidence_notes = request.data.get("evidence_notes", "")
+
+        if not description:
+            return Response({"detail": "Description required"}, status=400)
+
+        dispute = Dispute.objects.create(
+            order=order,
+            opened_by=request.user,
+            reason=reason,
+            description=description,
+            evidence_notes=evidence_notes,
+        )
+
+        # Notify vendor
+        first_item = order.items.first()
+        if first_item and first_item.product.vendor:
+            Notification.objects.create(
+                user=first_item.product.vendor.user,
+                message=f"Dispute opened for Order #{order.id}",
+                type=Notification.Type.DISPUTE,
+            )
+
+        return Response({
+            "id": dispute.id,
+            "order_id": order.id,
+            "reason": dispute.reason,
+            "status": dispute.status,
+            "created_at": dispute.created_at,
+        }, status=201)
+
+
+class DisputeListView(generics.ListAPIView):
+    """GET /api/disputes/ - List all disputes for current user"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = request.user
+        customer = _get_customer(user)
+        vendor = _get_vendor(user)
+
+        qs = Dispute.objects.none()
+        
+        # Buyer's disputes
+        if customer:
+            qs = Dispute.objects.filter(order__customer=customer)
+        
+        # Vendor's disputes
+        if vendor:
+            vendor_disputes = Dispute.objects.filter(
+                order__items__product__vendor=vendor
+            ).distinct()
+            qs = qs | vendor_disputes
+
+        return qs.select_related("order", "opened_by").order_by("-created_at")
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        data = [{
+            "id": d.id,
+            "order_id": d.order_id,
+            "reason": d.reason,
+            "description": d.description,
+            "status": d.status,
+            "opened_by": d.opened_by.username,
+            "created_at": d.created_at,
+            "resolved_at": d.resolved_at,
+        } for d in queryset]
+        return Response(data)
+
+
+class DisputeDetailView(APIView):
+    """GET/PATCH /api/disputes/<dispute_id>/ - View or resolve dispute"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, dispute_id):
+        try:
+            dispute = Dispute.objects.select_related("order__customer__user", "opened_by").get(id=dispute_id)
+        except Dispute.DoesNotExist:
+            return Response({"detail": "Not found"}, status=404)
+
+        # Check authorization
+        customer = _get_customer(request.user)
+        vendor = _get_vendor(request.user)
+        
+        is_buyer = customer and dispute.order.customer == customer
+        is_vendor = vendor and any(item.product.vendor == vendor for item in dispute.order.items.all())
+        
+        if not (is_buyer or is_vendor or request.user.is_staff):
+            return Response({"detail": "Not authorized"}, status=403)
+
+        return Response({
+            "id": dispute.id,
+            "order_id": dispute.order_id,
+            "reason": dispute.reason,
+            "description": dispute.description,
+            "evidence_notes": dispute.evidence_notes,
+            "status": dispute.status,
+            "opened_by": dispute.opened_by.username,
+            "created_at": dispute.created_at,
+            "resolved_at": dispute.resolved_at,
+            "resolution_notes": dispute.resolution_notes,
+            "refund_amount": str(dispute.refund_amount),
+        })
+
+    def patch(self, request, dispute_id):
+        """Admin/staff resolves dispute"""
+        if not request.user.is_staff:
+            return Response({"detail": "Admin only"}, status=403)
+
+        try:
+            dispute = Dispute.objects.select_related("order").get(id=dispute_id)
+        except Dispute.DoesNotExist:
+            return Response({"detail": "Not found"}, status=404)
+
+        resolution = request.data.get("resolution")  # "refund" or "release"
+        notes = request.data.get("notes", "")
+
+        if resolution == "refund":
+            refund_amount = Decimal(str(request.data.get("refund_amount", dispute.order.total_amount)))
+            
+            with db_tx.atomic():
+                # Release escrow back to buyer
+                buyer_wallet, _ = Wallet.objects.get_or_create(user=dispute.order.customer.user)
+                buyer_wallet.pending = (buyer_wallet.pending or Decimal("0")) - dispute.order.total_amount
+                buyer_wallet.balance = (buyer_wallet.balance or Decimal("0")) + refund_amount
+                buyer_wallet.save(update_fields=["pending", "balance"])
+
+                LedgerEntry.objects.create(
+                    wallet=buyer_wallet,
+                    type=LedgerEntry.Type.CREDIT,
+                    amount=refund_amount,
+                    reference=f"DISPUTE-{dispute.id}-REFUND",
+                    description=f"Refund for disputed Order #{dispute.order_id}",
+                    balance_after=buyer_wallet.balance,
+                    source="dispute_refund",
+                    status="posted",
+                )
+
+                dispute.resolve_refund(amount=refund_amount, notes=notes, resolved_by=request.user)
+                dispute.order.status = Order.Status.REFUNDED
+                dispute.order.save(update_fields=["status"])
+
+            return Response({"detail": "Dispute resolved with refund", "refund_amount": str(refund_amount)})
+
+        elif resolution == "release":
+            # Release funds to seller
+            first_item = dispute.order.items.first()
+            if first_item and first_item.product.vendor:
+                vendor = first_item.product.vendor
+                platform_fee = dispute.order.total_amount * Decimal(getattr(settings, "PLATFORM_FEE_PERCENT", "0.05"))
+                vendor_amount = dispute.order.total_amount - platform_fee
+
+                with db_tx.atomic():
+                    # Release buyer's pending
+                    buyer_wallet, _ = Wallet.objects.get_or_create(user=dispute.order.customer.user)
+                    buyer_wallet.pending = (buyer_wallet.pending or Decimal("0")) - dispute.order.total_amount
+                    buyer_wallet.save(update_fields=["pending"])
+
+                    LedgerEntry.objects.create(
+                        wallet=buyer_wallet,
+                        type=LedgerEntry.Type.RELEASE,
+                        amount=dispute.order.total_amount,
+                        reference=f"DISPUTE-{dispute.id}-RELEASE",
+                        description=f"Escrow released after dispute resolution",
+                        balance_after=buyer_wallet.balance,
+                        source="dispute_release",
+                        status="posted",
+                    )
+
+                    # Credit vendor
+                    WalletService.post_credit(
+                        user=vendor.user,
+                        amount=vendor_amount,
+                        source="order_payout",
+                        reference=f"ORDER-{dispute.order_id}",
+                        description=f"Sale payout for Order #{dispute.order_id} (after dispute)",
+                        idem=f"order-release-dispute-{dispute.id}",
+                    )
+
+                    dispute.resolve_release(notes=notes, resolved_by=request.user)
+                    dispute.order.status = Order.Status.DELIVERED
+                    dispute.order.save(update_fields=["status"])
+
+            return Response({"detail": "Dispute resolved, funds released to seller"})
+
+        else:
+            return Response({"detail": "Invalid resolution type"}, status=400)
+
+
+# ============================================================
+# VENDOR PRODUCT ENDPOINTS
+# ============================================================
+
+class VendorProductListView(generics.ListAPIView):
+    """GET /api/vendor/products/ - List vendor's own products"""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ProductListSerializer
+
+    def get_queryset(self):
+        vendor = _get_vendor(self.request.user)
+        if not vendor:
+            return Product.objects.none()
+        return Product.objects.filter(vendor=vendor).order_by("-created_at")
+
+
+class VendorProductCreateView(generics.CreateAPIView):
+    """POST /api/vendor/products/ - Create new product"""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ProductCreateSerializer
+    parser_classes = [MultiPartParser, FormParser]
+
+    def perform_create(self, serializer):
+        vendor = _get_vendor(self.request.user)
+        if not vendor:
+            raise permissions.PermissionDenied("Vendor profile required")
+        serializer.save(vendor=vendor)
+
+
+class VendorProductUpdateView(generics.UpdateAPIView):
+    """PATCH /api/vendor/products/<pk>/ - Update product"""
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ProductCreateSerializer
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_queryset(self):
+        vendor = _get_vendor(self.request.user)
+        if not vendor:
+            return Product.objects.none()
+        return Product.objects.filter(vendor=vendor)
+
+
+class VendorProductDeleteView(generics.DestroyAPIView):
+    """DELETE /api/vendor/products/<pk>/ - Soft delete product"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        vendor = _get_vendor(self.request.user)
+        if not vendor:
+            return Product.objects.none()
+        return Product.objects.filter(vendor=vendor)
+
+    def perform_destroy(self, instance):
+        """Soft delete"""
+        instance.is_active = False
+        instance.save(update_fields=["is_active"])

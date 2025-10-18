@@ -1,3 +1,4 @@
+# main/urls.py - COMPLETE URL configuration
 from django.urls import path
 from . import views
 
@@ -49,10 +50,9 @@ urlpatterns = [
     # Orders
     path("me/orders/", views.MyOrdersView.as_view(), name="me-orders"),
     path("me/vendor/orders/", views.VendorOrdersView.as_view(), name="me-vendor-orders"),
-    # Aliases for current frontend
     path("orders/", views.MyOrdersView.as_view(), name="orders-alias"),
 
-    # Wallet & transactions
+    # Wallet & transactions (old)
     path("me/wallet/", views.MyWalletView.as_view(), name="me-wallet"),
     path("me/wallet/deposit/", views.WalletDepositView.as_view(), name="me-wallet-deposit"),
     path("me/wallet/withdraw/", views.WalletWithdrawView.as_view(), name="me-wallet-withdraw"),
@@ -70,7 +70,6 @@ urlpatterns = [
     # Conversations & messages (buyer/vendor)
     path("me/conversations/", views.MyConversationsView.as_view(), name="me-conversations"),
     path("me/messages/", views.ConversationMessagesView.as_view(), name="me-messages"),
-    # Aliases for current frontend
     path("conversations/", views.MyConversationsView.as_view(), name="conversations-alias"),
     path("messages/", views.ConversationMessagesView.as_view(), name="messages-alias"),
 
@@ -88,8 +87,30 @@ urlpatterns = [
     # Resolution center
     path("me/resolutions/", views.MyResolutionCasesView.as_view(), name="me-resolutions"),
 
-    # Checkout
+    # ======================
+    # CHECKOUT & ORDER FLOW
+    # ======================
     path("checkout/", views.CheckoutView.as_view(), name="checkout"),
-
     path("orders/<int:order_id>/confirm-delivery/", views.ConfirmDeliveryView.as_view(), name="confirm-delivery"),
+
+    # ======================
+    # SHIPMENTS
+    # ======================
+    path("orders/<int:order_id>/shipment/", views.ShipmentCreateView.as_view(), name="shipment-create"),
+    path("shipments/<int:shipment_id>/", views.ShipmentDetailView.as_view(), name="shipment-detail"),
+
+    # ======================
+    # DISPUTES
+    # ======================
+    path("orders/<int:order_id>/dispute/", views.DisputeCreateView.as_view(), name="dispute-create"),
+    path("disputes/", views.DisputeListView.as_view(), name="dispute-list"),
+    path("disputes/<int:dispute_id>/", views.DisputeDetailView.as_view(), name="dispute-detail"),
+
+    # ======================
+    # VENDOR PRODUCT MANAGEMENT
+    # ======================
+    path("vendor/products/", views.VendorProductListView.as_view(), name="vendor-product-list"),
+    path("vendor/products/create/", views.VendorProductCreateView.as_view(), name="vendor-product-create"),
+    path("vendor/products/<int:pk>/", views.VendorProductUpdateView.as_view(), name="vendor-product-update"),
+    path("vendor/products/<int:pk>/delete/", views.VendorProductDeleteView.as_view(), name="vendor-product-delete"),
 ]

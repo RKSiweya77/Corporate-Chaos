@@ -1,71 +1,63 @@
 # wallet/providers/ozow.py
-from __future__ import annotations
-
 import hashlib
-import json
-from dataclasses import dataclass
+import uuid
 from decimal import Decimal
-from typing import Any, Dict, Tuple
-
-import requests
+from typing import Tuple
 
 
-@dataclass(frozen=True)
-class OzowEnv:
-    """Holds env & credentials for requests to Ozow."""
-    site_code: str
-    api_key: str
-    private_key: str
-    is_test: bool  # True -> staging, False -> live
-
-
-def _as_two_dp(amount: Decimal | str | float) -> str:
+def generate_hash_check(
+    site_code: str,
+    country_code: str,
+    currency_code: str,
+    amount: str,
+    transaction_reference: str,
+    bank_reference: str,
+    optional1: str,
+    optional2: str,
+    optional3: str,
+    optional4: str,
+    optional5: str,
+    cancel_url: str,
+    error_url: str,
+    success_url: str,
+    notify_url: str,
+    is_test: bool,
+    private_key: str,
+) -> str:
     """
-    Ozow accepts decimal string; always send two decimals.
+    Generate Ozow HashCheck signature.
+    All params must be lowercase strings; booleans as "true"/"false".
     """
-    if isinstance(amount, Decimal):
-        return f"{amount.quantize(Decimal('0.01'))}"
-    return f"{Decimal(str(amount)).quantize(Decimal('0.01'))}"
-
-
-def _hash_check(private_key: str, payload: Dict[str, Any]) -> str:
-    """
-    Build SHA512 in the *exact* order specified by Ozow.
-
-    Order (exclude HashCheck itself):
-    SiteCode, CountryCode, CurrencyCode, Amount, TransactionReference,
-    BankReference, CancelUrl, ErrorUrl, SuccessUrl, NotifyUrl, IsTest, [PrivateKey]
-    """
-    parts = [
-        payload.get("siteCode", ""),
-        payload.get("countryCode", ""),
-        payload.get("currencyCode", ""),
-        str(payload.get("amount", "")),
-        payload.get("transactionReference", ""),
-        payload.get("bankReference", ""),
-        payload.get("cancelUrl", ""),
-        payload.get("errorUrl", ""),
-        payload.get("successUrl", ""),
-        payload.get("notifyUrl", ""),
-        # booleans must be rendered literally "true"/"false" per docs examples
-        "true" if payload.get("isTest", False) else "false",
-        private_key,
-    ]
-    to_hash = "".join(parts).lower().encode("utf-8")
-    return hashlib.sha512(to_hash).hexdigest()
-
-
-def _endpoint(is_test: bool) -> str:
-    # Docs: PostPaymentRequest (staging vs live)
-    return "https://stagingapi.ozow.com/PostPaymentRequest" if is_test else "https://api.ozow.com/PostPaymentRequest"
+    is_test_str = "true" if is_test else "false"
+    
+    to_hash = (
+        f"{site_code.lower()}"
+        f"{country_code.lower()}"
+        f"{currency_code.lower()}"
+        f"{amount.lower()}"
+        f"{transaction_reference.lower()}"
+        f"{bank_reference.lower()}"
+        f"{optional1.lower()}"
+        f"{optional2.lower()}"
+        f"{optional3.lower()}"
+        f"{optional4.lower()}"
+        f"{optional5.lower()}"
+        f"{cancel_url.lower()}"
+        f"{error_url.lower()}"
+        f"{success_url.lower()}"
+        f"{notify_url.lower()}"
+        f"{is_test_str.lower()}"
+        f"{private_key.lower()}"
+    )
+    
+    return hashlib.sha512(to_hash.encode("utf-8")).hexdigest()
 
 
 def build_hosted_payment_url(
-    *,
     site_code: str,
     api_key: str,
     private_key: str,
-    amount: Decimal | str | float,
+    amount: str,
     transaction_reference: str,
     bank_reference: str,
     success_url: str,
@@ -74,71 +66,123 @@ def build_hosted_payment_url(
     notify_url: str,
     customer: str | None = None,
     is_test: bool = True,
-    selected_bank_id: str | None = None,
-    allow_variable_amount: bool | None = None,
-    variable_amount_min: Decimal | None = None,
-    variable_amount_max: Decimal | None = None,
-) -> Tuple[str, str, Dict[str, Any]]:
+    country_code: str = "ZA",
+    currency_code: str = "ZAR",
+    optional1: str = "",
+    optional2: str = "",
+    optional3: str = "",
+    optional4: str = "",
+    optional5: str = "",
+) -> Tuple[str, str, dict]:
     """
-    Calls Ozow PostPaymentRequest and returns:
-    (redirect_url, paymentRequestId, request_payload_dict)
-
-    Raises requests.HTTPError (with response text) if Ozow rejects the request,
-    or ValueError for a logical error in the response.
+    Build Ozow hosted payment page URL.
+    
+    Returns:
+        (redirect_url, payment_request_id, payload_dict)
     """
-    payload: Dict[str, Any] = {
-        "siteCode": site_code,
-        "countryCode": "ZA",
-        "currencyCode": "ZAR",
-        "amount": _as_two_dp(amount),
-        "transactionReference": transaction_reference,
-        "bankReference": bank_reference,
-        "cancelUrl": cancel_url,
-        "errorUrl": error_url,
-        "successUrl": success_url,
-        "notifyUrl": notify_url,
-        "isTest": bool(is_test),
+    payment_request_id = str(uuid.uuid4())
+    
+    # Generate hash
+    hash_check = generate_hash_check(
+        site_code=site_code,
+        country_code=country_code,
+        currency_code=currency_code,
+        amount=amount,
+        transaction_reference=transaction_reference,
+        bank_reference=bank_reference,
+        optional1=optional1 or "",
+        optional2=optional2 or "",
+        optional3=optional3 or "",
+        optional4=optional4 or "",
+        optional5=optional5 or "",
+        cancel_url=cancel_url,
+        error_url=error_url,
+        success_url=success_url,
+        notify_url=notify_url,
+        is_test=is_test,
+        private_key=private_key,
+    )
+    
+    # Build query string
+    base_url = "https://pay.ozow.com" if not is_test else "https://staging.ozow.com"
+    
+    payload = {
+        "SiteCode": site_code,
+        "CountryCode": country_code,
+        "CurrencyCode": currency_code,
+        "Amount": amount,
+        "TransactionReference": transaction_reference,
+        "BankReference": bank_reference,
+        "CancelUrl": cancel_url,
+        "ErrorUrl": error_url,
+        "SuccessUrl": success_url,
+        "NotifyUrl": notify_url,
+        "IsTest": "true" if is_test else "false",
+        "HashCheck": hash_check,
+        "Optional1": optional1 or "",
+        "Optional2": optional2 or "",
+        "Optional3": optional3 or "",
+        "Optional4": optional4 or "",
+        "Optional5": optional5 or "",
     }
-
+    
     if customer:
-        payload["customer"] = customer
+        payload["Customer"] = customer
+    
+    # Build URL
+    query_parts = [f"{k}={v}" for k, v in payload.items() if v]
+    redirect_url = f"{base_url}/?{'&'.join(query_parts)}"
+    
+    return redirect_url, payment_request_id, payload
 
-    # Optional fields (kept consistent with docs)
-    if selected_bank_id:
-        payload["selectedBankId"] = selected_bank_id
-    if allow_variable_amount:
-        payload["allowVariableAmount"] = True
-        if variable_amount_min is not None:
-            payload["variableAmountMin"] = float(variable_amount_min)
-        if variable_amount_max is not None:
-            payload["variableAmountMax"] = float(variable_amount_max)
 
-    payload["hashCheck"] = _hash_check(private_key, payload)
-
-    url = _endpoint(is_test)
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "ApiKey": api_key,
-    }
-
-    resp = requests.post(url, headers=headers, data=json.dumps(payload), timeout=25)
-    if resp.status_code >= 400:
-        # surface the exact response for debugging
-        try:
-            details = resp.json()
-        except Exception:
-            details = {"raw": resp.text}
-        err = requests.HTTPError(f"Ozow returned HTTP {resp.status_code}", response=resp)
-        err.args = (*err.args, details)  # attach parsed payload if present
-        raise err
-
-    data = resp.json()
-    redirect = data.get("url")
-    payment_request_id = data.get("paymentRequestId")
-    error_msg = data.get("errorMessage")
-
-    if not redirect or error_msg:
-        raise ValueError(f"Ozow error: {error_msg or 'Missing redirect url'}")
-
-    return redirect, payment_request_id, payload
+def verify_webhook_signature(payload: dict, private_key: str) -> bool:
+    """
+    Verify Ozow webhook signature.
+    
+    Expected fields in payload:
+    - SiteCode, TransactionId, TransactionReference, Amount, Status, etc.
+    - HashCheck (the signature to verify)
+    """
+    received_hash = payload.get("HashCheck") or payload.get("hashCheck") or ""
+    
+    site_code = payload.get("SiteCode") or payload.get("siteCode") or ""
+    transaction_id = payload.get("TransactionId") or payload.get("transactionId") or ""
+    transaction_reference = payload.get("TransactionReference") or payload.get("transactionReference") or ""
+    amount = str(payload.get("Amount") or payload.get("amount") or "")
+    status = payload.get("Status") or payload.get("status") or ""
+    optional1 = payload.get("Optional1") or payload.get("optional1") or ""
+    optional2 = payload.get("Optional2") or payload.get("optional2") or ""
+    optional3 = payload.get("Optional3") or payload.get("optional3") or ""
+    optional4 = payload.get("Optional4") or payload.get("optional4") or ""
+    optional5 = payload.get("Optional5") or payload.get("optional5") or ""
+    currency_code = payload.get("CurrencyCode") or payload.get("currencyCode") or "ZAR"
+    is_test = payload.get("IsTest") or payload.get("isTest") or "false"
+    status_message = payload.get("StatusMessage") or payload.get("statusMessage") or ""
+    
+    # Normalize boolean
+    if isinstance(is_test, bool):
+        is_test = "true" if is_test else "false"
+    is_test = str(is_test).lower()
+    
+    # Build hash input (lowercase everything)
+    to_hash = (
+        f"{site_code.lower()}"
+        f"{transaction_id.lower()}"
+        f"{transaction_reference.lower()}"
+        f"{amount.lower()}"
+        f"{status.lower()}"
+        f"{optional1.lower()}"
+        f"{optional2.lower()}"
+        f"{optional3.lower()}"
+        f"{optional4.lower()}"
+        f"{optional5.lower()}"
+        f"{currency_code.lower()}"
+        f"{is_test.lower()}"
+        f"{status_message.lower()}"
+        f"{private_key.lower()}"
+    )
+    
+    computed_hash = hashlib.sha512(to_hash.encode("utf-8")).hexdigest()
+    
+    return computed_hash.lower() == received_hash.lower()

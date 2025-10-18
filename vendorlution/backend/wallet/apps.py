@@ -1,10 +1,10 @@
+# wallet/apps.py
 from django.apps import AppConfig
 
 
 class WalletConfig(AppConfig):
-    name = "wallet"
-    verbose_name = "Wallet"
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'wallet'
 
     def ready(self):
-        # Hook signals (auto-create wallet for new users)
-        from . import signals  # noqa
+        import wallet.signals  # Register signals

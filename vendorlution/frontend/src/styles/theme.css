@@ -1,0 +1,49 @@
+/* ====== src/styles/theme.css ====== */
+
+/* Dark theme toggled via data-theme="dark" on <html> or <body> */
+[data-theme="dark"] {
+  --brand: #ffffff;
+  --brand-600: #f5f5f5;
+  --brand-700: #f0f0f0;
+  --brand-800: #eaeaea;
+
+  --text: #e7e7e7;
+  --muted: #a9b0b8;
+
+  --surface: #0f1115;
+  --surface-2: #111318;
+  --surface-3: #171a21;
+
+  --primary: #ffffff;
+  --secondary: #a9b0b8;
+  --success: #3ddc97;
+  --danger: #ff6b6b;
+  --warning: #ffd166;
+  --info: #4cc9f0;
+
+  --border: #222733;
+  --shadow: 0 10px 25px rgba(0,0,0,0.5);
+
+  --escrow: #ffd166;
+  --star: #f1c40f;
+}
+
+/* Dark-specific tweaks */
+[data-theme="dark"] body { color: var(--text); background: var(--surface-2); }
+[data-theme="dark"] .navbar,
+[data-theme="dark"] .footer,
+[data-theme="dark"] .card,
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .sidebar { background: var(--surface); border-color: var(--border); }
+[data-theme="dark"] .list-group-item { background: var(--surface); color: var(--text); }
+[data-theme="dark"] .table { color: var(--text); }
+
+/* Optional utility for programmatic theme toggling */
+.theme-toggle {
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: .35rem .65rem;
+  font-weight: 700;
+}
+.theme-toggle:hover { background: var(--surface-3); }
