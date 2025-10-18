@@ -779,7 +779,7 @@ class CheckoutView(APIView):
 
 class ConfirmDeliveryView(APIView):
     """
-    Buyer confirms delivery → Release escrow funds to seller
+    Buyer confirms delivery → Release escrow funds to seller + Mark products as SOLD
     POST /api/orders/<order_id>/confirm-delivery/
     """
     permission_classes = [permissions.IsAuthenticated]
@@ -842,11 +842,34 @@ class ConfirmDeliveryView(APIView):
             # 4. Update order status
             order.status = Order.Status.DELIVERED
             order.save(update_fields=["status"])
+            
+            # 5. ⭐ NEW: Mark all products in this order as SOLD
+            products_sold = []
+            for item in order.items.all():
+                product = item.product
+                if not getattr(product, "is_sold", False):
+                    # Prefer a model method if it exists; otherwise, fall back to setting the flag.
+                    try:
+                        product.mark_as_sold()
+                    except AttributeError:
+                        setattr(product, "is_sold", True)
+                        product.save(update_fields=["is_sold"])
+                    products_sold.append(product.title)
+            
+            # 6. ⭐ NEW: Notify vendor about sold products
+            if products_sold:
+                product_list = ", ".join(products_sold)
+                Notification.objects.create(
+                    user=vendor.user,
+                    message=f"🎉 Your product(s) have been sold: {product_list}",
+                    type=Notification.Type.ORDER,
+                )
         
         return Response({
             "detail": "Delivery confirmed! Funds released to seller.",
             "vendor_amount": str(vendor_amount),
             "platform_fee": str(platform_fee),
+            "products_sold": len(products_sold),
         })
 
 
@@ -1004,7 +1027,8 @@ class DisputeListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        user = request.user
+        # FIX: use self.request (request isn't in scope on the class)
+        user = self.request.user
         customer = _get_customer(user)
         vendor = _get_vendor(user)
 

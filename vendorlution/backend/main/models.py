@@ -102,6 +102,8 @@ class Product(TimeStampedModel):
     price = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal("0.00"))])
     stock = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
+    is_sold = models.BooleanField(default=False)  # ⭐ NEW FIELD
+    sold_at = models.DateTimeField(blank=True, null=True)  # ⭐ NEW FIELD - Track when item was sold
     condition = models.CharField(max_length=20, choices=Condition.choices, default=Condition.NEW)
     main_image = models.ImageField(upload_to=upload_product_main_image, blank=True, null=True)
     rating_avg = models.FloatField(default=0.0, validators=[MinValueValidator(0.0), MaxValueValidator(5.0)])
@@ -110,6 +112,7 @@ class Product(TimeStampedModel):
         indexes = [
             models.Index(fields=["-created_at"]),
             models.Index(fields=["-rating_avg"]),
+            models.Index(fields=["is_sold"]),  # ⭐ NEW INDEX for faster queries
         ]
 
     def save(self, *args, **kwargs):
@@ -118,6 +121,13 @@ class Product(TimeStampedModel):
             # timestamp to avoid collisions
             self.slug = f"{base}-{int(timezone.now().timestamp())}"
         super().save(*args, **kwargs)
+
+    def mark_as_sold(self):
+        """Mark product as sold and set timestamp"""
+        self.is_sold = True
+        self.stock = 0
+        self.sold_at = timezone.now()
+        self.save(update_fields=["is_sold", "stock", "sold_at"])
 
     def __str__(self):
         return self.title

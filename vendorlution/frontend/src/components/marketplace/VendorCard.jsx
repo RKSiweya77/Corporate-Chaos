@@ -1,123 +1,110 @@
+// src/components/marketplace/VendorCard.jsx
 import { Link } from "react-router-dom";
 import { toMedia } from "../../utils/media";
 
 export default function VendorCard({ vendor }) {
   const name = vendor?.shop_name || vendor?.name || "Vendor";
-  const slug = vendor?.slug;
   const id = vendor?.id;
   const logo = toMedia(vendor?.logo);
   const banner = toMedia(vendor?.banner);
-  const description = vendor?.description;
-  const city = vendor?.city;
-  const rating = vendor?.rating_avg ?? vendor?.rating;
-  const productCount = vendor?.product_count;
+  const rating = vendor?.rating_avg ?? vendor?.rating ?? 0;
+  const productCount = vendor?.product_count || vendor?.products_count || 0;
+  const isVerified = vendor?.is_verified || vendor?.verified;
+  const sales = vendor?.sales_count || 0;
 
-  const vendorPath = slug && id
-    ? `/vendor/store/${slug}/${id}`
-    : id ? `/vendor/store/${id}` : "#";
+  const vendorPath = `/vendors/${id}`;
 
   return (
-    <div className="card h-100 shadow-sm border-0 vendor-card">
-      {/* Banner Image */}
-      {banner ? (
-        <Link to={vendorPath} className="ratio ratio-21x9">
-          <img 
-            src={banner} 
-            alt={`${name} banner`} 
-            className="card-img-top object-fit-cover"
-            style={{ borderTopLeftRadius: '0.375rem', borderTopRightRadius: '0.375rem' }}
-          />
-        </Link>
-      ) : (
-        <div className="bg-light ratio ratio-21x9">
-          <div className="d-flex align-items-center justify-content-center text-muted">
-            <i className="fas fa-store fa-2x"></i>
-          </div>
-        </div>
-      )}
+    <Link to={vendorPath} className="text-decoration-none">
+      <style>{`
+        .vcard {
+          background:#0b0614; border:1px solid #1f1932; border-radius:14px; overflow:hidden;
+          box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.03);
+          transition: transform .16s ease, border-color .16s ease;
+          color:#e7e6ea;
+        }
+        .vcard:hover { transform: translateY(-3px); border-color:#2b2444; }
+        .vcard-banner { height:110px; background:#0f0a1d; }
+        .vcard-logo {
+          width:76px; height:76px; border-radius:999px; object-fit:cover;
+          border:3px solid #0b0614; box-shadow:0 6px 18px rgba(0,0,0,.35);
+          background:#100a1f;
+        }
+        .vcard-name { color:#fff; font-weight:800; }
+        .vcard-chip {
+          display:inline-flex; align-items:center; gap:.35rem;
+          padding:.25rem .5rem; border-radius:999px; font-size:12px;
+          border:1px solid #2b2444; background:#100a1f; color:#e7e6ea;
+        }
+        .vcard-verified {
+          color:#31d67a;
+        }
+        .vcard-stat { color:#bfb9cf; font-size:12px; }
+        .vcard-btn {
+          border:1px solid #2b2444; background:#100a1f; color:#e7e6ea;
+          padding:.45rem .7rem; border-radius:10px; width:100%;
+          transition:all .15s ease; font-weight:700;
+        }
+        .vcard-btn:hover { background:#16102a; border-color:#3b315e; }
+      `}</style>
 
-      <div className="card-body">
-        {/* Vendor Info */}
-        <div className="d-flex align-items-start mb-3">
-          {/* Logo */}
-          <div className="flex-shrink-0">
+      <div className="vcard h-100">
+        {/* Banner */}
+        <div className="position-relative vcard-banner">
+          {banner ? (
+            <img src={banner} alt={`${name} banner`} className="w-100 h-100 object-fit-cover" />
+          ) : (
+            <div className="w-100 h-100 d-flex align-items-center justify-content-center text-muted">
+              <i className="fas fa-store fa-lg opacity-50"></i>
+            </div>
+          )}
+          {isVerified && (
+            <div className="position-absolute top-0 end-0 m-2">
+              <span className="vcard-chip vcard-verified">
+                <i className="fas fa-check-circle" /> Verified
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Body */}
+        <div className="p-3">
+          <div className="text-center" style={{ marginTop: "-52px", marginBottom: "8px" }}>
             {logo ? (
-              <img
-                src={logo}
-                alt={name}
-                className="rounded border"
-                style={{ width: '50px', height: '50px', objectFit: 'cover' }}
-              />
+              <img src={logo} alt={name} className="vcard-logo" />
             ) : (
-              <div 
-                className="rounded bg-light d-flex align-items-center justify-content-center border"
-                style={{ width: '50px', height: '50px' }}
-              >
+              <div className="vcard-logo d-inline-flex align-items-center justify-content-center">
                 <i className="fas fa-store text-muted"></i>
               </div>
             )}
           </div>
 
-          {/* Vendor Details */}
-          <div className="flex-grow-1 ms-3">
-            <Link to={vendorPath} className="text-decoration-none text-dark">
-              <h6 className="fw-bold mb-1 text-truncate">{name}</h6>
-            </Link>
-            
-            {city && (
-              <div className="small text-muted mb-1">
-                <i className="fas fa-map-marker-alt me-1"></i>
-                {city}
-              </div>
+          <h6 className="vcard-name text-center mb-1 text-truncate">{name}</h6>
+
+          <div className="d-flex justify-content-center gap-2 mb-2">
+            {rating > 0 ? (
+              <span className="vcard-chip">
+                <i className="fas fa-star text-warning" />
+                {Number(rating).toFixed(1)}
+              </span>
+            ) : (
+              <span className="vcard-chip">New seller</span>
             )}
-
-            {/* Rating */}
-            {rating && (
-              <div className="small text-warning">
-                ⭐ {Number(rating).toFixed(1)}
-                <span className="text-muted ms-1">({vendor?.review_count || 0})</span>
-              </div>
-            )}
+            <span className="vcard-chip">
+              <i className="fas fa-box" />
+              {productCount}
+            </span>
           </div>
-        </div>
 
-        {/* Description */}
-        {description && (
-          <p className="small text-muted mb-3 line-clamp-2">
-            {description.length > 100 
-              ? `${description.substring(0, 100)}...` 
-              : description
-            }
-          </p>
-        )}
+          <div className="text-center vcard-stat mb-3">
+            {sales} sale{sales === 1 ? "" : "s"}
+          </div>
 
-        {/* Stats */}
-        <div className="d-flex justify-content-between align-items-center text-center">
-          <div className="stat">
-            <div className="h6 mb-0 text-primary">{productCount || 0}</div>
-            <small className="text-muted">Products</small>
-          </div>
-          
-          <div className="stat">
-            <div className="h6 mb-0 text-primary">{vendor?.sales_count || 0}</div>
-            <small className="text-muted">Sales</small>
-          </div>
-          
-          <div className="stat">
-            <div className="h6 mb-0 text-primary">
-              {vendor?.is_verified ? 'Verified' : '--'}
-            </div>
-            <small className="text-muted">Status</small>
-          </div>
-        </div>
-
-        {/* View Store Button */}
-        <div className="d-grid mt-3">
-          <Link to={vendorPath} className="btn btn-outline-dark btn-sm">
-            View Store
-          </Link>
+          <button className="vcard-btn">
+            Visit Store
+          </button>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

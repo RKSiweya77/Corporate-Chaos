@@ -17,6 +17,7 @@ import Products from './pages/Products.jsx';
 import Vendors from './pages/Vendors.jsx';
 import ProductDetail from './pages/ProductDetail.jsx';
 import VendorDetail from './pages/VendorDetail.jsx';
+import VendorStore from './pages/VendorStore.jsx';
 import NotFound from './pages/NotFound.jsx';
 
 // Auth Pages
@@ -97,7 +98,8 @@ export default function App() {
                   <Route path="/products" element={<Products />} />
                   <Route path="/products/:id" element={<ProductDetail />} />
                   <Route path="/vendors" element={<Vendors />} />
-                  <Route path="/vendors/:id" element={<VendorDetail />} />
+                  <Route path="/vendors/:id" element={<VendorStore />} />
+                  <Route path="/vendor/store/:slug?/:id" element={<VendorStore />} />
                   
                   {/* Static Pages */}
                   <Route path="/about" element={<div className="container py-5"><h1>About Us</h1><p>Learn more about Vendorlution and our mission.</p></div>} />
@@ -152,6 +154,7 @@ export default function App() {
                   {/* ============================================ */}
                   <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
                   <Route path="/chat/:id" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+                  <Route path="/chat/vendor/:vendorId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
                   <Route path="/messages" element={<Navigate to="/chat" replace />} />
 
                   {/* ============================================ */}

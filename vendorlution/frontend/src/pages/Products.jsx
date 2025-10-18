@@ -2,31 +2,28 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import api from "../api/axios";
-import API_ENDPOINTS from "../api/endpoints";
+import API_ENDPOINTS from "../api/endpoints"; // <-- make consistent
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import EmptyState from "../components/shared/EmptyState";
 import ProductCard from "../components/marketplace/ProductCard";
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
-  
-  // State management
+
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState([]);
   const [error, setError] = useState("");
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
 
-  // Filter states with URL synchronization
   const [q, setQ] = useState(searchParams.get("search") || "");
   const [category, setCategory] = useState(searchParams.get("category") || "");
   const [ordering, setOrdering] = useState(searchParams.get("sort") || "");
   const [priceRange, setPriceRange] = useState({
     min: searchParams.get("min_price") || "",
-    max: searchParams.get("max_price") || ""
+    max: searchParams.get("max_price") || "",
   });
 
-  // Debounced search to avoid excessive API calls
   const debouncedSearch = useCallback(() => {
     const timer = setTimeout(() => {
       const newParams = new URLSearchParams();
@@ -44,7 +41,6 @@ export default function Products() {
     debouncedSearch();
   }, [debouncedSearch]);
 
-  // API parameters
   const params = useMemo(() => {
     const p = {};
     if (q) p.search = q;
@@ -56,7 +52,6 @@ export default function Products() {
     return p;
   }, [q, category, ordering, priceRange]);
 
-  // Load categories
   useEffect(() => {
     let alive = true;
     async function loadCategories() {
@@ -78,7 +73,6 @@ export default function Products() {
     return () => (alive = false);
   }, []);
 
-  // Load products
   useEffect(() => {
     let alive = true;
     async function loadProducts() {
@@ -101,7 +95,6 @@ export default function Products() {
     return () => (alive = false);
   }, [params]);
 
-  // Clear all filters
   const clearFilters = () => {
     setQ("");
     setCategory("");
@@ -110,7 +103,6 @@ export default function Products() {
     setSearchParams({});
   };
 
-  // Check if any filters are active
   const hasActiveFilters = q || category || ordering || priceRange.min || priceRange.max;
 
   return (
@@ -127,7 +119,8 @@ export default function Products() {
             </div>
             <div className="text-end d-none d-md-block">
               <small className="text-muted">
-                {!loading && `${products.length} product${products.length !== 1 ? 's' : ''} found`}
+                {!loading &&
+                  `${products.length} product${products.length !== 1 ? "s" : ""} found`}
               </small>
             </div>
           </div>
@@ -190,7 +183,9 @@ export default function Products() {
                       className="form-control"
                       placeholder="Min"
                       value={priceRange.min}
-                      onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+                      onChange={(e) =>
+                        setPriceRange((prev) => ({ ...prev, min: e.target.value }))
+                      }
                     />
                   </div>
                   <div className="col-6">
@@ -199,18 +194,16 @@ export default function Products() {
                       className="form-control"
                       placeholder="Max"
                       value={priceRange.max}
-                      onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+                      onChange={(e) =>
+                        setPriceRange((prev) => ({ ...prev, max: e.target.value }))
+                      }
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Clear Filters */}
               {hasActiveFilters && (
-                <button
-                  className="btn btn-outline-secondary w-100"
-                  onClick={clearFilters}
-                >
+                <button className="btn btn-outline-secondary w-100" onClick={clearFilters}>
                   <i className="fa fa-times me-2" />
                   Clear Filters
                 </button>
@@ -221,13 +214,13 @@ export default function Products() {
 
         {/* Products Grid */}
         <div className="col-12 col-lg-9">
-          {/* Toolbar */}
           <div className="card mb-4">
             <div className="card-body py-2">
               <div className="row align-items-center">
                 <div className="col-md-6 mb-2 mb-md-0">
                   <small className="text-muted d-md-none">
-                    {!loading && `${products.length} product${products.length !== 1 ? 's' : ''}`}
+                    {!loading &&
+                      `${products.length} product${products.length !== 1 ? "s" : ""}`}
                   </small>
                 </div>
                 <div className="col-md-6 text-md-end">
@@ -250,38 +243,35 @@ export default function Products() {
             </div>
           </div>
 
-          {/* Results */}
           {loading ? (
             <LoadingSpinner fullPage message="Loading products..." />
           ) : error ? (
-            <EmptyState 
-              title="Unable to load products" 
+            <EmptyState
+              title="Unable to load products"
               subtitle={error}
               icon="fa-exclamation-triangle"
               action={
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => window.location.reload()}
-                >
+                <button className="btn btn-primary" onClick={() => window.location.reload()}>
                   <i className="fa fa-refresh me-2" />
                   Try Again
                 </button>
               }
             />
           ) : products.length === 0 ? (
-            <EmptyState 
+            <EmptyState
               title={hasActiveFilters ? "No products match your filters" : "No products available"}
-              subtitle={hasActiveFilters ? "Try adjusting your search or filters" : "Check back soon for new products"}
+              subtitle={
+                hasActiveFilters ? "Try adjusting your search or filters" : "Check back soon for new products"
+              }
               icon="fa-search"
-              action={hasActiveFilters && (
-                <button 
-                  className="btn btn-outline-dark"
-                  onClick={clearFilters}
-                >
-                  <i className="fa fa-times me-2" />
-                  Clear All Filters
-                </button>
-              )}
+              action={
+                hasActiveFilters && (
+                  <button className="btn btn-outline-dark" onClick={clearFilters}>
+                    <i className="fa fa-times me-2" />
+                    Clear All Filters
+                  </button>
+                )
+              }
             />
           ) : (
             <>
@@ -292,13 +282,6 @@ export default function Products() {
                   </div>
                 ))}
               </div>
-              
-              {/* Load More (for future pagination) */}
-              {/* <div className="text-center mt-4">
-                <button className="btn btn-outline-dark">
-                  Load More Products
-                </button>
-              </div> */}
             </>
           )}
         </div>
