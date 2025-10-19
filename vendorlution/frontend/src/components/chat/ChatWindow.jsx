@@ -1,301 +1,171 @@
 // src/components/chat/ChatWindow.jsx
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import api from "../../api/axios";
-import API_ENDPOINTS from "../../api/endpoints";
-import { useAuth } from "../../context/AuthContext";
-import LoadingSpinner from "../shared/LoadingSpinner";
-import EmptyState from "../shared/EmptyState";
-import ConversationList from "./ConversationList";
-import MessageBubble from "./MessageBubble";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useParams } from "react-router-dom";
 
-export default function ChatWindow() {
-  const { isAuthenticated, user } = useAuth();
-  const { id: routeId } = useParams();
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+import { useAuth } from "../../context/AuthContext";                 // <-- fixed
+import { useNotifications } from "../../context/NotificationsContext"; // <-- fixed
+import api from "../../api/axios";                                     // <-- fixed
+import { API_ENDPOINTS } from "../../api/endpoints";                   // <-- fixed
+
+export default function ChatWindow({ conversationId: propConversationId }) {
+  const routeParams = useParams();
+  const conversationId = propConversationId ?? routeParams.id ?? null;
+
+  const { user, isAuthenticated } = useAuth();
+  const { addNotification } = useNotifications();
+
+  const [messages, setMessages] = useState([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
-
-  const [conversations, setConversations] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
-  const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
 
-  const scrollerRef = useRef(null);
-  const pollRef = useRef(null);
+  const listRef = useRef(null);
 
-  // Scroll to bottom helper
-  const scrollToBottom = useCallback(() => {
-    setTimeout(() => {
-      const el = scrollerRef.current;
-      if (el) el.scrollTop = el.scrollHeight;
-    }, 100);
-  }, []);
-
-  // Load conversations
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-
-    async function loadConversations() {
-      setError("");
-      try {
-        setLoading(true);
-        const res = await api.get(API_ENDPOINTS.messages.conversations);
-        const list = Array.isArray(res.data?.results) ? res.data.results : (res.data || []);
-        setConversations(list);
-
-        // Select conversation: route param > first conversation
-        const targetId = routeId ? String(routeId) : (list[0]?.id ? String(list[0].id) : null);
-        setSelectedId(targetId);
-      } catch (e) {
-        setError("Failed to load conversations.");
-        console.error("Conversation load error:", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadConversations();
-  }, [isAuthenticated, routeId]);
-
-  // Load messages for selected conversation with polling
-  useEffect(() => {
-    if (!selectedId) {
-      setMessages([]);
-      return;
-    }
-
-    let mounted = true;
-
-    async function loadMessages() {
-      if (!mounted) return;
-      
-      try {
-        const endpoint = API_ENDPOINTS.messages.conversationMessages.replace("{id}", selectedId);
-        const res = await api.get(endpoint);
-        const list = Array.isArray(res.data?.results) ? res.data.results : (res.data || []);
-        
-        if (mounted) {
-          setMessages(list);
-          scrollToBottom();
-        }
-      } catch (e) {
-        console.error("Message load error:", e);
-      }
-    }
-
-    // Initial load
-    loadMessages();
-
-    // Start polling every 2.5 seconds
-    pollRef.current = setInterval(loadMessages, 2500);
-
-    return () => {
-      mounted = false;
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
-    };
-  }, [selectedId, scrollToBottom]);
-
-  const selectedConversation = useMemo(() => 
-    conversations.find((c) => String(c.id) === String(selectedId)) || null,
-    [conversations, selectedId]
+  const canSend = useMemo(
+    () => isAuthenticated && conversationId && text.trim().length > 0 && !sending,
+    [isAuthenticated, conversationId, text, sending]
   );
 
-  const handleSelectConversation = useCallback((id) => {
-    const newId = String(id);
-    setSelectedId(newId);
-    navigate(`/chat/${newId}`, { replace: true });
-  }, [navigate]);
+  const scrollToBottom = useCallback(() => {
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, []);
 
-  const sendMessage = async (e) => {
-    e.preventDefault();
-    const trimmedText = text.trim();
-    if (!trimmedText || !selectedConversation || sending) return;
+  // Load messages for current conversation
+  useEffect(() => {
+    let alive = true;
+    async function load() {
+      if (!conversationId) return;
+      try {
+        setError("");
+        const res = await api.get(API_ENDPOINTS.messages.thread(conversationId));
+        const arr = Array.isArray(res.data) ? res.data : res.data?.results || [];
+        if (alive) setMessages(arr);
+        setTimeout(scrollToBottom, 0);
+      } catch (e) {
+        if (alive) setError("Failed to load conversation.");
+      }
+    }
+    load();
+    return () => { alive = false; };
+  }, [conversationId, scrollToBottom]);
 
-    setSending(true);
-    setError("");
+  // (Optional) simple polling so you at least receive new messages
+  useEffect(() => {
+    if (!conversationId) return;
+    const t = setInterval(async () => {
+      try {
+        const res = await api.get(API_ENDPOINTS.messages.thread(conversationId));
+        const arr = Array.isArray(res.data) ? res.data : res.data?.results || [];
+        setMessages(arr);
+      } catch {}
+    }, 5000);
+    return () => clearInterval(t);
+  }, [conversationId]);
+
+  const handleSend = async (e) => {
+    e?.preventDefault?.();
+    if (!canSend) return;
 
     try {
-      await api.post(API_ENDPOINTS.messages.send, {
-        conversation: selectedConversation.id,
-        text: trimmedText,
-      });
-      
+      setSending(true);
+      setError("");
+
+      const payload = { text: text.trim() };
+      const res = await api.post(API_ENDPOINTS.messages.send(conversationId), payload);
+
+      // Optimistically append
+      const newMsg = res?.data || {
+        id: `temp-${Date.now()}`,
+        text: text.trim(),
+        sender_id: user?.id,
+        created_at: new Date().toISOString(),
+      };
+      setMessages((m) => [...m, newMsg]);
       setText("");
-      
-      // Immediate refresh after sending
-      const endpoint = API_ENDPOINTS.messages.conversationMessages.replace("{id}", selectedConversation.id);
-      const res = await api.get(endpoint);
-      const list = Array.isArray(res.data?.results) ? res.data.results : (res.data || []);
-      setMessages(list);
-      scrollToBottom();
+      setTimeout(scrollToBottom, 0);
     } catch (e) {
-      setError(e?.response?.data?.detail || "Failed to send message.");
-      console.error("Send message error:", e);
+      setError("Failed to send message.");
+      addNotification?.("Failed to send message", "error");
     } finally {
       setSending(false);
     }
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="container py-5">
-        <div className="alert alert-info">
-          <i className="fa fa-info-circle me-2" />
-          Please sign in to access your messages.
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) return <LoadingSpinner fullPage />;
-
   return (
-    <div className="container-fluid py-4">
+    <div className="card h-100">
+      <style>{`
+        .chat-header {
+          display:flex; align-items:center; justify-content:space-between;
+          padding:.75rem 1rem; border-bottom:1px solid var(--border-0);
+          background: var(--surface-1);
+          color: var(--text-0);
+        }
+        .chat-list {
+          height: calc(70vh - 56px);
+          overflow: auto;
+          background: var(--surface-0);
+        }
+        .chat-row { padding: .5rem .75rem; }
+        .msg {
+          display:inline-block; max-width: 78%; padding:.5rem .65rem; border-radius:12px;
+          border:1px solid var(--border-0); background: var(--surface-1); color: var(--text-0);
+          white-space: pre-wrap;
+        }
+        .me { background: color-mix(in oklab, var(--primary-500) 18%, var(--surface-1)); }
+        .chat-input {
+          border-top:1px solid var(--border-0); background: var(--surface-1);
+          padding:.5rem;
+        }
+        .send-btn { min-width:44px; }
+      `}</style>
+
+      <div className="chat-header">
+        <div className="fw-bold">Conversation</div>
+        <small className="text-muted">{messages?.length || 0} message{messages.length === 1 ? "" : "s"}</small>
+      </div>
+
       {error && (
-        <div className="container mb-3">
-          <div className="alert alert-danger d-flex justify-content-between align-items-center">
-            <span>{error}</span>
-            <button className="btn-close" onClick={() => setError("")} />
-          </div>
-        </div>
+        <div className="alert alert-danger rounded-0 m-0">{error}</div>
       )}
 
-      <div className="row g-3" style={{ minHeight: "70vh", maxHeight: "80vh" }}>
-        {/* Conversations Sidebar */}
-        <div className="col-lg-3 col-md-4">
-          <div className="card h-100 border-0 shadow-sm">
-            <div className="card-header bg-white fw-bold d-flex align-items-center">
-              <i className="fa fa-comments me-2 text-muted" />
-              Conversations
-              <span className="badge bg-dark ms-2">{conversations.length}</span>
-            </div>
-            <div className="card-body p-0">
-              {conversations.length === 0 ? (
-                <div className="p-4">
-                  <EmptyState
-                    icon="fa-comments"
-                    title="No conversations"
-                    subtitle="Start a chat from a product or order page."
-                  />
-                </div>
-              ) : (
-                <ConversationList
-                  conversations={conversations}
-                  currentUserId={user?.id}
-                  selectedId={selectedId}
-                  onSelect={handleSelectConversation}
-                />
-              )}
+      <div className="chat-list" ref={listRef}>
+        {messages.length === 0 ? (
+          <div className="d-flex h-100 align-items-center justify-content-center text-muted">
+            <div className="text-center">
+              <i className="fa fa-message-slash fa-2x mb-2" />
+              <div>No messages yet. Start the conversation!</div>
             </div>
           </div>
-        </div>
-
-        {/* Chat Area */}
-        <div className="col-lg-9 col-md-8">
-          <div className="card h-100 d-flex flex-column border-0 shadow-sm">
-            {/* Chat Header */}
-            <div className="card-header bg-white">
-              {selectedConversation ? (
-                <div className="d-flex align-items-center justify-content-between">
-                  <div>
-                    <div className="fw-bold">
-                      {(() => {
-                        const isBuyer = selectedConversation.buyer?.id === user?.id;
-                        const other = isBuyer ? selectedConversation.vendor : selectedConversation.buyer;
-                        return other?.shop_name || other?.username || `User #${other?.id}`;
-                      })()}
-                    </div>
-                    {selectedConversation.product?.title && (
-                      <div className="small text-muted">
-                        <i className="fa fa-shopping-bag me-1" />
-                        About: {selectedConversation.product.title}
-                      </div>
-                    )}
-                  </div>
-                  <div className="small text-muted">
-                    {conversations.find(c => String(c.id) === String(selectedId))?.last_message_at && 
-                      new Date(conversations.find(c => String(c.id) === String(selectedId)).last_message_at).toLocaleDateString()
-                    }
-                  </div>
-                </div>
-              ) : (
-                <span className="text-muted">
-                  <i className="fa fa-arrow-left me-2" />
-                  Select a conversation
-                </span>
-              )}
-            </div>
-
-            {/* Messages Area */}
-            <div
-              ref={scrollerRef}
-              className="card-body flex-grow-1"
-              style={{ overflowY: "auto", minHeight: 300, maxHeight: "50vh" }}
-            >
-              {!selectedConversation ? (
-                <EmptyState 
-                  icon="fa-comment"
-                  title="No conversation selected"
-                  subtitle="Choose a conversation from the sidebar to start chatting."
-                />
-              ) : messages.length === 0 ? (
-                <div className="text-center text-muted py-5">
-                  <i className="fa fa-comment-slash fa-2x mb-3" />
-                  <div>No messages yet. Start the conversation!</div>
-                </div>
-              ) : (
-                messages.map((msg) => (
-                  <MessageBubble
-                    key={msg.id}
-                    isOwn={msg.sender?.id === user?.id}
-                    text={msg.text}
-                    timestamp={new Date(msg.created_at).toLocaleString()}
-                    senderName={msg.sender?.username}
-                  />
-                ))
-              )}
-            </div>
-
-            {/* Message Input */}
-            <div className="card-footer bg-light">
-              <form onSubmit={sendMessage} className="d-flex gap-2">
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Type your message…"
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  disabled={!selectedConversation || sending}
-                  maxLength={500}
-                />
-                <button
-                  type="submit"
-                  className="btn btn-dark px-3"
-                  disabled={!selectedConversation || sending || !text.trim()}
-                  title="Send message"
-                >
-                  {sending ? (
-                    <span className="spinner-border spinner-border-sm" />
-                  ) : (
-                    <i className="fa fa-paper-plane" />
-                  )}
-                </button>
-              </form>
-              <div className="small text-muted mt-1 text-end">
-                {text.length}/500 characters
+        ) : (
+          messages.map((m) => {
+            const mine = String(m.sender_id ?? m.sender?.id) === String(user?.id);
+            return (
+              <div key={m.id} className={`chat-row ${mine ? "text-end" : "text-start"}`}>
+                <div className={`msg ${mine ? "me" : ""}`}>{m.text}</div>
               </div>
-            </div>
-          </div>
-        </div>
+            );
+          })
+        )}
       </div>
+
+      <form className="chat-input d-flex align-items-center gap-2" onSubmit={handleSend}>
+        <input
+          className="form-control"
+          placeholder="Type your message..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          maxLength={500}
+        />
+        <button
+          type="submit"
+          className="btn btn-primary send-btn"
+          disabled={!canSend}
+          title={isAuthenticated ? "Send" : "Sign in to send"}
+        >
+          {sending ? <span className="spinner-border spinner-border-sm" /> : <i className="fa fa-paper-plane" />}
+        </button>
+      </form>
     </div>
   );
 }

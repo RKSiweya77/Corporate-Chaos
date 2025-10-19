@@ -10,11 +10,11 @@
   --text: #e7e7e7;
   --muted: #a9b0b8;
 
-  --surface: #0f1115;
-  --surface-2: #111318;
-  --surface-3: #171a21;
+  --surface: #060010;
+  --surface-2: #0a0513;
+  --surface-3: #0f0a1d;
 
-  --primary: #ffffff;
+  --primary: #4cc9f0;
   --secondary: #a9b0b8;
   --success: #3ddc97;
   --danger: #ff6b6b;
@@ -29,14 +29,50 @@
 }
 
 /* Dark-specific tweaks */
-[data-theme="dark"] body { color: var(--text); background: var(--surface-2); }
+[data-theme="dark"] body { 
+  color: var(--text); 
+  background: var(--surface-2); 
+}
+
 [data-theme="dark"] .navbar,
 [data-theme="dark"] .footer,
 [data-theme="dark"] .card,
 [data-theme="dark"] .modal-content,
-[data-theme="dark"] .sidebar { background: var(--surface); border-color: var(--border); }
-[data-theme="dark"] .list-group-item { background: var(--surface); color: var(--text); }
-[data-theme="dark"] .table { color: var(--text); }
+[data-theme="dark"] .sidebar { 
+  background: var(--surface); 
+  border-color: var(--border); 
+}
+
+[data-theme="dark"] .list-group-item { 
+  background: var(--surface); 
+  color: var(--text); 
+}
+
+[data-theme="dark"] .table { 
+  color: var(--text); 
+}
+
+/* Dock-inspired components */
+.dock-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.dock-button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  transition: all 0.2s ease;
+}
+
+.dock-button:hover {
+  background: var(--surface-3);
+  border-color: #333;
+  transform: translateY(-1px);
+}
 
 /* Optional utility for programmatic theme toggling */
 .theme-toggle {

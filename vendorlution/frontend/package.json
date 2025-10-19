@@ -7,12 +7,21 @@
     "dev": "vite",
     "start": "vite",
     "build": "vite build",
-    "preview": "vite preview --port 4173"
+    "preview": "vite preview --port 4173",
+
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
+    "e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.6.0",
     "axios": "^1.7.7",
     "bootstrap": "^5.3.8",
+    "motion": "^12.23.24",
     "prop-types": "^15.8.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -20,6 +29,39 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.3",
-    "vite": "^5.4.10"
+    "vite": "^5.4.10",
+
+    /* ---- Unit & Component testing ---- */
+    "vitest": "^2.0.5",
+    "@vitest/coverage-v8": "^2.0.5",
+    "jsdom": "^25.0.1",
+    "@testing-library/react": "^16.0.1",
+    "@testing-library/user-event": "^14.5.2",
+    "@testing-library/jest-dom": "^6.6.3",
+    "msw": "^2.4.10",
+    "whatwg-fetch": "^3.6.20",
+
+    /* ---- E2E (optional but recommended) ---- */
+    "@playwright/test": "^1.49.1"
+  },
+  "vitest": {
+    "environment": "jsdom",
+    "setupFiles": [
+      "./src/test/setupTests.js"
+    ],
+    "css": true,
+    "coverage": {
+      "provider": "v8",
+      "reportsDirectory": "./coverage",
+      "reporter": [
+        "text",
+        "html"
+      ],
+      "exclude": [
+        "node_modules/",
+        "dist/",
+        "src/test/"
+      ]
+    }
   }
 }

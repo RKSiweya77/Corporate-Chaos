@@ -1,431 +1,496 @@
 // src/pages/VendorStore.jsx
-import { useEffect, useState, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import api from "../api/axios";
-import API_ENDPOINTS from "../api/endpoints"; // <-- make import consistent
-import { useAuth } from "../context/AuthContext";
-import { useNotifications } from "../context/NotificationsContext";
+import { API_ENDPOINTS } from "../api/endpoints";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import EmptyState from "../components/shared/EmptyState";
 import ProductCard from "../components/marketplace/ProductCard";
+import { useAuth } from "../context/AuthContext";
+import { useNotifications } from "../context/NotificationsContext";
 import { toMedia } from "../utils/media";
 
+const VENDOR_FILTER_KEYS = ["vendor", "vendor_id", "seller", "shop", "store"];
+
 export default function VendorStore() {
-  const { id: idFromUrl } = useParams();
-  const id = String(idFromUrl || ""); // normalize to string for comparisons
-  const nav = useNavigate();
+  const { id: routeId } = useParams();
+  const vendorId = routeId;
+
   const { isAuthenticated } = useAuth();
   const { addNotification } = useNotifications();
 
-  const [vendor, setVendor] = useState(null);
-  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("products");
+  const [vendor, setVendor] = useState(null);
+  const [error, setError] = useState("");
+  const [active, setActive] = useState("products"); // "products" | "about" | "reviews"
 
-  // Helper: robust vendor id extraction from a product object
-  const belongsToVendor = useMemo(() => {
-    return (p) => {
-      // cover various shapes: {vendor: 10}, {vendor_id: 10}, {vendor: {id: 10}}, {seller: {id: 10}}, etc.
-      const candidates = [
-        p?.vendor,
-        p?.vendor_id,
-        p?.seller_id,
-        p?.seller,
-        p?.store_id,
-        p?.store,
-        p?.vendor?.id,
-        p?.seller?.id,
-        p?.store?.id,
-      ].filter((v) => v !== undefined && v !== null);
-      return candidates.map(String).includes(id);
+  // which query param does the backend expect for vendor filter?
+  const [vendorParamKey, setVendorParamKey] = useState(VENDOR_FILTER_KEYS[0]);
+
+  // products state (local grid to enforce vendor match)
+  const [pLoading, setPLoading] = useState(true);
+  const [pError, setPError] = useState("");
+  const [products, setProducts] = useState([]);
+
+  const logo = useMemo(() => toMedia(vendor?.logo), [vendor]);
+  const banner = useMemo(() => toMedia(vendor?.banner), [vendor]);
+  const name = vendor?.shop_name || vendor?.name || "Vendor";
+  const rating = vendor?.rating_avg ?? vendor?.rating ?? null;
+  const productCount = vendor?.product_count ?? vendor?.products_count ?? null;
+  const sales = vendor?.sales_count ?? vendor?.orders_count ?? null;
+  const joined = vendor?.created_at ?? vendor?.date_joined ?? vendor?.joined_at ?? null;
+  const verified = vendor?.is_verified || vendor?.verified;
+  const location = vendor?.location || vendor?.city || vendor?.country || "";
+
+  /* ---------------------- Load Vendor ---------------------- */
+  useEffect(() => {
+    let alive = true;
+    async function loadVendor() {
+      try {
+        setLoading(true);
+        let res;
+        if (API_ENDPOINTS?.vendors?.detail) {
+          res = await api.get(API_ENDPOINTS.vendors.detail(vendorId));
+        } else if (API_ENDPOINTS?.vendors?.retrieve) {
+          res = await api.get(API_ENDPOINTS.vendors.retrieve(vendorId));
+        } else if (API_ENDPOINTS?.vendors) {
+          res = await api.get(`${API_ENDPOINTS.vendors}/${vendorId}/`);
+        } else {
+          throw new Error("Vendor endpoint not configured.");
+        }
+        if (!alive) return;
+        setVendor(res?.data ?? null);
+        setError("");
+      } catch (e) {
+        if (!alive) return;
+        setError(e?.message || "Failed to load vendor.");
+        setVendor(null);
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
+    }
+    if (vendorId) loadVendor();
+    return () => {
+      alive = false;
     };
-  }, [id]);
+  }, [vendorId]);
 
+  /* --------------- Auto-detect vendor filter key --------------- */
   useEffect(() => {
     let cancelled = false;
 
-    async function loadVendorStore() {
-      setLoading(true);
-
-      try {
-        // 1) Load vendor details
-        const vendorRes = await api.get(API_ENDPOINTS.vendors.detail(id));
-        if (cancelled) return;
-        setVendor(vendorRes.data);
-
-        // 2) Load vendor products
-        let productsData = [];
-
-        // 2a) Prefer a vendor-scoped endpoint if your API exposes it
-        // Provide an optional endpoint in endpoints.js like vendors.products = (id) => `/api/vendors/${id}/products/`
-        if (API_ENDPOINTS?.vendors?.products) {
-          try {
-            const vendorProductsRes = await api.get(
-              API_ENDPOINTS.vendors.products(id),
-              { params: { page_size: 48 } }
-            );
-            const raw =
-              Array.isArray(vendorProductsRes.data)
-                ? vendorProductsRes.data
-                : vendorProductsRes.data?.results || [];
-            productsData = raw;
-          } catch {
-            // fall through to query-params approach
+    async function detectKey() {
+      for (const key of VENDOR_FILTER_KEYS) {
+        try {
+          const r = await api.get(API_ENDPOINTS.products?.list, {
+            params: { [key]: vendorId, page_size: 1 },
+          });
+          const arr = Array.isArray(r.data) ? r.data : r.data?.results || [];
+          const first = arr[0];
+          const foundId =
+            first?.vendor?.id ??
+            first?.vendor_id ??
+            first?.vendor ??
+            first?.seller?.id ??
+            null;
+          if (String(foundId) === String(vendorId)) {
+            if (!cancelled) setVendorParamKey(key);
+            return;
           }
+        } catch {
+          // try next
         }
-
-        // 2b) If that failed or doesn't exist, try common param names
-        if (!productsData.length) {
-          // Try multiple queries until one returns results
-          const paramAttempts = [
-            { vendor: id },
-            { vendor_id: id },
-            { seller: id },
-            { seller_id: id },
-            { store: id },
-            { store_id: id },
-          ];
-
-          for (const params of paramAttempts) {
-            try {
-              const res = await api.get(API_ENDPOINTS.products.list, {
-                params: { ...params, page_size: 48 },
-              });
-              const raw =
-                Array.isArray(res.data) ? res.data : res.data?.results || [];
-              if (raw.length) {
-                productsData = raw;
-                break;
-              } else {
-                // still store for possible final filtering
-                if (!productsData.length) productsData = raw;
-              }
-            } catch {
-              // continue to next attempt
-            }
-          }
-        }
-
-        // 2c) Final safety net: client-side filter
-        // If backend ignored our filter, ensure only this vendor's items remain.
-        if (productsData?.length) {
-          productsData = productsData.filter(belongsToVendor);
-        }
-
-        if (cancelled) return;
-        setProducts(productsData || []);
-      } catch (error) {
-        if (!cancelled) {
-          console.error("Failed to load vendor store:", error);
-          addNotification("Failed to load vendor store", "error");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
       }
+      if (!cancelled) setVendorParamKey("vendor");
     }
 
-    if (id) loadVendorStore();
-
+    if (API_ENDPOINTS?.products?.list && vendorId) detectKey();
     return () => {
       cancelled = true;
     };
-  }, [id, addNotification, belongsToVendor]);
+  }, [vendorId]);
 
-  const handleStartChat = () => {
+  /* -------------------- Load ONLY this vendor's products -------------------- */
+  useEffect(() => {
+    let alive = true;
+
+    // helper: ensure we only keep products that belong to vendorId
+    const belongsToVendor = (p) => {
+      const vid =
+        p?.vendor?.id ??
+        p?.vendor_id ??
+        p?.vendor ??
+        p?.seller?.id ??
+        p?.seller_id ??
+        null;
+      return String(vid) === String(vendorId);
+    };
+
+    async function loadVendorProducts() {
+      if (!vendorId) return;
+      try {
+        setPLoading(true);
+        setPError("");
+
+        // 1) Try explicit vendor products endpoint if provided
+        const directAttempts = [
+          async () => API_ENDPOINTS?.vendors?.products && api.get(API_ENDPOINTS.vendors.products(vendorId), { params: { page_size: 24 } }),
+          async () =>
+            API_ENDPOINTS?.vendors &&
+            api.get(`${API_ENDPOINTS.vendors}/${vendorId}/products/`, { params: { page_size: 24 } }),
+        ];
+
+        for (const call of directAttempts) {
+          try {
+            const r = await call?.();
+            if (r) {
+              const arr = Array.isArray(r.data) ? r.data : r.data?.results || [];
+              const filtered = arr.filter(belongsToVendor);
+              if (!alive) return;
+              setProducts(filtered);
+              return;
+            }
+          } catch {
+            // fall through to query-based attempt
+          }
+        }
+
+        // 2) Fallback to main products list with auto-detected vendor key
+        const res = await api.get(API_ENDPOINTS.products.list, {
+          params: { page_size: 24, [vendorParamKey]: vendorId },
+        });
+        const arr = Array.isArray(res.data) ? res.data : res.data?.results || [];
+        const filtered = arr.filter(belongsToVendor);
+        if (!alive) return;
+        setProducts(filtered);
+      } catch (e) {
+        if (!alive) return;
+        setPError(e?.message || "Failed to load products.");
+        setProducts([]);
+      } finally {
+        if (!alive) return;
+        setPLoading(false);
+      }
+    }
+
+    loadVendorProducts();
+    return () => {
+      alive = false;
+    };
+  }, [vendorId, vendorParamKey]);
+
+  /* -------------------- Start chat with vendor -------------------- */
+  const startChat = useCallback(async () => {
     if (!isAuthenticated) {
-      nav("/login", { state: { from: { pathname: `/vendors/${id}` } } });
+      addNotification?.("Please sign in to chat with the vendor.", "info");
+      window.location.assign(`/login?next=/vendors/${vendorId}`);
       return;
     }
-    nav(`/chat/vendor/${id}`);
-  };
 
-  if (loading) {
-    return (
-      <div className="container py-5">
-        <LoadingSpinner fullPage message="Loading store..." />
-      </div>
-    );
-  }
+    const attempts = [
+      async () => {
+        if (API_ENDPOINTS?.messages?.withVendor) {
+          const r = await api.post(API_ENDPOINTS.messages.withVendor(vendorId));
+          return r?.data;
+        }
+      },
+      async () => {
+        if (API_ENDPOINTS?.messages?.start) {
+          const r = await api.post(API_ENDPOINTS.messages.start, { vendor_id: vendorId });
+          return r?.data;
+        }
+      },
+      async () => {
+        if (API_ENDPOINTS?.messages?.create) {
+          const r = await api.post(API_ENDPOINTS.messages.create, { vendor: vendorId });
+          return r?.data;
+        }
+      },
+    ];
 
-  if (!vendor) {
-    return (
-      <div className="container py-5">
-        <EmptyState
-          title="Store Not Found"
-          subtitle="This vendor store doesn't exist or has been removed."
-          icon="fa-store-slash"
-        />
-      </div>
-    );
-  }
+    for (const call of attempts) {
+      try {
+        const data = await call?.();
+        const convoId =
+          data?.id || data?.conversation_id || data?.conversation?.id || null;
+        if (convoId) {
+          addNotification?.("Conversation ready", "success");
+          window.location.assign(`/chat/${convoId}`);
+          return;
+        }
+      } catch {
+        // try next
+      }
+    }
+    window.location.assign(`/chat/vendor/${vendorId}`);
+  }, [isAuthenticated, vendorId, addNotification]);
 
-  const banner = toMedia(vendor.banner);
-  const logo = toMedia(vendor.logo);
-  const name = vendor.shop_name || vendor.name || vendor.username || "Store";
-  const description = vendor.description || "";
-  const rating = vendor.rating_avg || 0;
-  const reviewCount = vendor.review_count || 0;
-  const isVerified = vendor.is_verified || vendor.verified;
+  /* -------------------- Styles (dock theme) -------------------- */
+  const styles = (
+    <style>{`
+      .store-wrap { color: var(--text-0); }
+
+      /* Hero layout: banner, avatar, meta */
+      .hero {
+        position: relative;
+        border: 1px solid var(--border-0);
+        border-radius: 16px;
+        overflow: hidden;
+        background:
+          radial-gradient(900px 360px at 8% 0%, color-mix(in oklab, var(--primary-500) 16%, transparent), transparent 60%),
+          linear-gradient(180deg, var(--surface-1) 0%, var(--surface-0) 100%);
+        box-shadow: 0 10px 24px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.04);
+      }
+      .hero-banner { height: 200px; background: var(--surface-0); }
+      .hero-banner img { object-fit: cover; width: 100%; height: 100%; display: block; }
+
+      .hero-body { display:grid; grid-template-columns: 110px 1fr auto; gap: 16px; align-items: end; padding: 16px; }
+      @media (max-width: 576px) { .hero-body { grid-template-columns: 80px 1fr; } }
+
+      .avatar {
+        width: 110px; height: 110px; border-radius: 999px; overflow: hidden;
+        border: 4px solid var(--surface-1);
+        margin-top: -55px; background: var(--surface-0);
+        display:flex; align-items:center; justify-content:center;
+        box-shadow: 0 6px 18px rgba(0,0,0,.18);
+      }
+      .meta .name { font-weight: 800; font-size: clamp(1.05rem, 2.1vw, 1.35rem); color: var(--text-0); }
+      .chips { display:flex; flex-wrap: wrap; gap: .35rem; margin-top: .25rem; }
+      .chip {
+        display:inline-flex; align-items:center; gap:.35rem;
+        padding:.25rem .55rem; font-size:.8rem; border-radius:999px;
+        border:1px solid var(--border-0); background: var(--surface-1); color: var(--text-0);
+      }
+      .chip .fa-star { color: #f8c000; }
+
+      .actions { display:flex; gap:.5rem; align-items:center; }
+      .btn-ghost {
+        border:1px solid var(--border-0); background: var(--surface-1); color: var(--text-0);
+        border-radius: 10px; padding:.5rem .75rem; font-weight:600;
+      }
+      .btn-ghost:hover { background: color-mix(in oklab, var(--primary-500) 12%, var(--surface-1)); }
+
+      /* Tabs */
+      .tabs {
+        display:flex; gap:.25rem; border-bottom:1px solid var(--border-0); margin-top: .75rem;
+        padding: 0 .5rem;
+      }
+      .tab-btn {
+        appearance:none; background:transparent; border:none; padding:.6rem .8rem; border-radius:10px 10px 0 0;
+        font-weight:700; color: var(--text-1);
+      }
+      .tab-btn.active {
+        color: var(--text-0);
+        background: var(--surface-1); border: 1px solid var(--border-0); border-bottom-color: transparent;
+      }
+
+      /* Panels / cards */
+      .panel {
+        border: 1px solid var(--border-0); border-radius: 14px; background: var(--surface-1);
+        box-shadow: 0 10px 30px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.04);
+      }
+
+      .about-grid { display:grid; gap: 12px; grid-template-columns: repeat(2, 1fr); }
+      @media (max-width: 768px) { .about-grid { grid-template-columns: 1fr; } }
+
+      .list-unstyled { margin: 0; padding: 0; list-style: none; }
+      .muted { color: var(--text-1); }
+
+      /* Reviews */
+      .review { border-bottom: 1px solid var(--border-0); padding: .75rem 0; }
+      .review:last-child { border-bottom: none; }
+    `}</style>
+  );
+
+  /* ---------------------- Reviews loader (optional) ---------------------- */
+  const [reviews, setReviews] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    async function loadReviews() {
+      if (active !== "reviews" || !vendorId) return;
+      const attempts = [
+        async () => API_ENDPOINTS?.reviews?.vendor && api.get(API_ENDPOINTS.reviews.vendor(vendorId)),
+        async () => API_ENDPOINTS?.vendors?.reviews && api.get(API_ENDPOINTS.vendors.reviews(vendorId)),
+        async () => API_ENDPOINTS?.reviews?.list && api.get(API_ENDPOINTS.reviews.list, { params: { vendor: vendorId, page_size: 10 } }),
+      ];
+      try {
+        setLoadingReviews(true);
+        for (const call of attempts) {
+          try {
+            const r = await call?.();
+            const arr = Array.isArray(r?.data) ? r?.data : r?.data?.results || [];
+            if (arr.length || r) {
+              if (alive) setReviews(arr);
+              return;
+            }
+          } catch {}
+        }
+        if (alive) setReviews([]);
+      } finally {
+        if (alive) setLoadingReviews(false);
+      }
+    }
+    loadReviews();
+    return () => { alive = false; };
+  }, [active, vendorId]);
+
+  if (loading) return <LoadingSpinner fullPage />;
+  if (error) return <div className="container py-4"><EmptyState title="Unable to load vendor" subtitle={error} icon="fa-store-slash" /></div>;
+  if (!vendor) return <div className="container py-4"><EmptyState title="Vendor not found" subtitle="This store may have been removed." icon="fa-store-slash" /></div>;
 
   return (
-    <div className="vendor-store-page">
-      {/* Banner Section */}
-      <div className="position-relative" style={{ height: "300px" }}>
-        {banner ? (
-          <>
-            <img
-              src={banner}
-              alt={`${name} banner`}
-              className="w-100 h-100 object-fit-cover"
-            />
-            <div
-              className="position-absolute top-0 start-0 w-100 h-100"
-              style={{
-                background:
-                  "linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7))",
-              }}
-            ></div>
-          </>
-        ) : (
-          <div
-            className="w-100 h-100"
-            style={{
-              background:
-                "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            }}
-          ></div>
-        )}
+    <div className="container py-3 store-wrap">
+      {styles}
 
-        {/* Vendor Info Overlay */}
-        <div className="position-absolute bottom-0 start-0 w-100 p-4">
-          <div className="container">
-            <div className="row align-items-end">
-              <div className="col-auto">
-                {logo ? (
-                  <img
-                    src={logo}
-                    alt={name}
-                    className="rounded-circle border border-4 border-white shadow"
-                    style={{ width: "120px", height: "120px", objectFit: "cover" }}
-                  />
-                ) : (
-                  <div
-                    className="rounded-circle bg-white border border-4 border-white shadow d-flex align-items-center justify-content-center"
-                    style={{ width: "120px", height: "120px" }}
-                  >
-                    <i className="fas fa-store fa-3x text-primary"></i>
-                  </div>
-                )}
-              </div>
-              <div className="col text-white">
-                <div className="d-flex align-items-center gap-2 mb-2">
-                  <h1 className="h2 fw-bold mb-0">{name}</h1>
-                  {isVerified && (
-                    <span className="badge bg-success">
-                      <i className="fas fa-check-circle me-1"></i>
-                      Verified
-                    </span>
-                  )}
-                </div>
+      {/* HERO */}
+      <div className="hero mb-3">
+        <div className="hero-banner">
+          {banner ? <img src={banner} alt={`${name} banner`} /> : null}
+        </div>
 
-                {rating > 0 && (
-                  <div className="mb-2">
-                    <i className="fas fa-star text-warning me-1"></i>
-                    <span className="fw-semibold">{rating.toFixed(1)}</span>
-                    <span className="ms-2 opacity-75">({reviewCount} reviews)</span>
-                  </div>
-                )}
+        <div className="hero-body">
+          {/* Avatar */}
+          <div className="avatar">
+            {logo ? (
+              <img src={logo} alt={`${name} logo`} className="w-100 h-100 object-fit-cover" />
+            ) : (
+              <i className="fa fa-store fa-lg muted" />
+            )}
+          </div>
 
-                {vendor.address && (
-                  <div className="opacity-75">
-                    <i className="fas fa-map-marker-alt me-2"></i>
-                    {vendor.address}
-                  </div>
-                )}
-              </div>
-              <div className="col-auto">
-                <button className="btn btn-light btn-lg" onClick={handleStartChat}>
-                  <i className="fas fa-comments me-2"></i>
-                  Chat with Vendor
-                </button>
-              </div>
+          {/* Meta */}
+          <div className="meta">
+            <div className="name text-truncate">{name}</div>
+            <div className="chips">
+              {verified && (
+                <span className="chip"><i className="fa fa-check-circle" /> Verified</span>
+              )}
+              {rating ? (
+                <span className="chip"><i className="fa fa-star" /> {Number(rating).toFixed(1)}</span>
+              ) : (
+                <span className="chip">New seller</span>
+              )}
+              {location ? <span className="chip"><i className="fa fa-location-dot" /> {location}</span> : null}
+              {typeof sales === "number" ? <span className="chip"><i className="fa fa-bag-shopping" /> {sales} sales</span> : null}
+              {typeof productCount === "number" ? <span className="chip"><i className="fa fa-box" /> {productCount} products</span> : null}
             </div>
+
+            {/* Tabs */}
+            <div className="tabs">
+              <button className={`tab-btn ${active === "products" ? "active" : ""}`} onClick={() => setActive("products")}>
+                Products
+              </button>
+              <button className={`tab-btn ${active === "about" ? "active" : ""}`} onClick={() => setActive("about")}>
+                About
+              </button>
+              <button className={`tab-btn ${active === "reviews" ? "active" : ""}`} onClick={() => setActive("reviews")}>
+                Reviews
+              </button>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="actions">
+            <button className="btn-ghost" onClick={startChat}>
+              <i className="fa fa-comments me-2" />
+              Chat with vendor
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Store Content */}
-      <div className="container py-4">
-        {/* Tabs */}
-        <ul className="nav nav-tabs mb-4">
-          <li className="nav-item">
-            <button
-              className={`nav-link ${activeTab === "products" ? "active" : ""}`}
-              onClick={() => setActiveTab("products")}
-            >
-              <i className="fas fa-grid-2 me-2"></i>
-              Products ({products.length})
-            </button>
-          </li>
-          <li className="nav-item">
-            <button
-              className={`nav-link ${activeTab === "about" ? "active" : ""}`}
-              onClick={() => setActiveTab("about")}
-            >
-              <i className="fas fa-info-circle me-2"></i>
-              About
-            </button>
-          </li>
-          <li className="nav-item">
-            <button
-              className={`nav-link ${activeTab === "reviews" ? "active" : ""}`}
-              onClick={() => setActiveTab("reviews")}
-            >
-              <i className="fas fa-star me-2"></i>
-              Reviews ({reviewCount})
-            </button>
-          </li>
-        </ul>
-
-        {/* Tab Content */}
-        {activeTab === "products" && (
-          <div>
-            {products.length === 0 ? (
-              <EmptyState
-                title="No Products Yet"
-                subtitle="This vendor hasn't added any products yet, or filtering failed."
-                icon="fa-box-open"
-              />
-            ) : (
-              <div className="row g-3">
-                {products.map((product) => (
-                  <div className="col-6 col-md-4 col-lg-3" key={product.id}>
-                    <ProductCard product={product} />
-                  </div>
-                ))}
-              </div>
-            )}
+      {/* CONTENT */}
+      {active === "products" && (
+        <div className="panel p-3">
+          <div className="d-flex align-items-center justify-content-between mb-2">
+            <h5 className="mb-0 fw-bold">Products</h5>
+            <div className="small muted">
+              {typeof productCount === "number" ? `${productCount} item${productCount === 1 ? "" : "s"}` : ""}
+            </div>
           </div>
-        )}
 
-        {activeTab === "about" && (
-          <div className="row">
-            <div className="col-lg-8">
-              <div className="card border-0 shadow-sm">
-                <div className="card-body p-4">
-                  <h4 className="fw-bold mb-3">About {name}</h4>
-                  {description ? (
-                    <p className="text-muted" style={{ whiteSpace: "pre-line" }}>
-                      {description}
-                    </p>
-                  ) : (
-                    <p className="text-muted">No description available.</p>
-                  )}
-
-                  <hr className="my-4" />
-
-                  <h5 className="fw-semibold mb-3">Store Information</h5>
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <div className="d-flex align-items-start gap-3">
-                        <i className="fas fa-calendar-alt text-primary mt-1"></i>
-                        <div>
-                          <div className="small text-muted">Member Since</div>
-                          <div className="fw-semibold">
-                            {vendor.created_at
-                              ? new Date(vendor.created_at).toLocaleDateString("en-US", {
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                })
-                              : "—"}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="d-flex align-items-start gap-3">
-                        <i className="fas fa-box text-primary mt-1"></i>
-                        <div>
-                          <div className="small text-muted">Total Products</div>
-                          <div className="fw-semibold">{products.length}</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="d-flex align-items-start gap-3">
-                        <i className="fas fa-star text-warning mt-1"></i>
-                        <div>
-                          <div className="small text-muted">Store Rating</div>
-                          <div className="fw-semibold">{rating.toFixed(1)} / 5.0</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="d-flex align-items-start gap-3">
-                        <i className="fas fa-shopping-bag text-success mt-1"></i>
-                        <div>
-                          <div className="small text-muted">Total Sales</div>
-                          <div className="fw-semibold">{vendor.sales_count || 0}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+          {pLoading ? (
+            <LoadingSpinner />
+          ) : pError ? (
+            <EmptyState title="Unable to load products" subtitle={pError} icon="fa-box" />
+          ) : products.length === 0 ? (
+            <EmptyState title="No products yet" subtitle="This vendor hasn't added products." icon="fa-box" />
+          ) : (
+            <div className="row g-3">
+              {products.map((p) => (
+                <div className="col-6 col-md-4 col-xl-3" key={p.id}>
+                  <ProductCard product={p} />
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {active === "about" && (
+        <div className="panel p-3">
+          <h5 className="fw-bold mb-3">About {name}</h5>
+          <div className="about-grid">
+            <div>
+              <div className="fw-600 mb-1">Store description</div>
+              <div className="muted">
+                {vendor?.description || vendor?.bio || "No description provided yet."}
               </div>
             </div>
+            <div>
+              <div className="fw-600 mb-1">Policies</div>
+              <ul className="list-unstyled muted">
+                <li><i className="fa fa-truck me-2" /> Shipping: {vendor?.shipping_policy || "See product pages for shipping details."}</li>
+                <li><i className="fa fa-rotate-left me-2" /> Returns: {vendor?.return_policy || "Returns accepted according to marketplace rules."}</li>
+                <li><i className="fa fa-shield-halved me-2" /> Escrow: Always protected by escrow until delivery confirmation.</li>
+              </ul>
+            </div>
+            <div>
+              <div className="fw-600 mb-1">Joined</div>
+              <div className="muted">{joined ? new Date(joined).toLocaleDateString() : "—"}</div>
+            </div>
+            <div>
+              <div className="fw-600 mb-1">Contact</div>
+              <div className="muted">Use the “Chat with vendor” button to get in touch safely.</div>
+            </div>
+          </div>
+        </div>
+      )}
 
-            <div className="col-lg-4">
-              <div className="card border-0 shadow-sm">
-                <div className="card-body">
-                  <h5 className="fw-semibold mb-3">Contact Vendor</h5>
-                  <div className="d-grid gap-2">
-                    <button className="btn btn-dark" onClick={handleStartChat}>
-                      <i className="fas fa-comments me-2"></i>
-                      Start Chat
-                    </button>
-                    <button className="btn btn-outline-dark">
-                      <i className="fas fa-envelope me-2"></i>
-                      Send Email
-                    </button>
+      {active === "reviews" && (
+        <div className="panel p-3">
+          <h5 className="fw-bold mb-3">Reviews</h5>
+          {loadingReviews ? (
+            <LoadingSpinner />
+          ) : reviews.length === 0 ? (
+            <EmptyState title="No reviews yet" subtitle="Buy from this vendor and be the first to leave a review." icon="fa-star" />
+          ) : (
+            <div>
+              {reviews.map((r) => (
+                <div key={r.id} className="review">
+                  <div className="d-flex justify-content-between">
+                    <div className="fw-600">
+                      {r.user?.username || r.user_name || "Buyer"} •{" "}
+                      <span className="text-warning">
+                        {"★".repeat(Math.round(r.rating || r.stars || 0))}
+                      </span>
+                    </div>
+                    <small className="muted">
+                      {r.created_at ? new Date(r.created_at).toLocaleDateString() : ""}
+                    </small>
                   </div>
-
-                  <hr className="my-3" />
-
-                  <h6 className="fw-semibold mb-2">Store Policies</h6>
-                  <ul className="list-unstyled small text-muted">
-                    <li className="mb-2">
-                      <i className="fas fa-shield-alt text-success me-2"></i>
-                      Buyer Protection Included
-                    </li>
-                    <li className="mb-2">
-                      <i className="fas fa-truck text-primary me-2"></i>
-                      Fast Shipping Available
-                    </li>
-                    <li className="mb-2">
-                      <i className="fas fa-undo text-info me-2"></i>
-                      30-Day Return Policy
-                    </li>
-                  </ul>
+                  <div className="muted mt-1">{r.comment || r.text || "—"}</div>
                 </div>
-              </div>
+              ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
-        {activeTab === "reviews" && (
-          <div className="card border-0 shadow-sm">
-            <div className="card-body p-4">
-              <h4 className="fw-bold mb-4">Customer Reviews</h4>
-              <EmptyState
-                title="No Reviews Yet"
-                subtitle="This vendor hasn't received any reviews yet."
-                icon="fa-star"
-              />
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Spacer so the bottom dock never overlaps content */}
+      <div style={{ height: 96 }} />
     </div>
   );
 }

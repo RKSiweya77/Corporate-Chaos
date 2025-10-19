@@ -1,5 +1,5 @@
 // src/pages/Landing.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import { API_ENDPOINTS } from "../api/endpoints";
@@ -16,15 +16,10 @@ export default function Landing() {
   const [loadingVendors, setLoadingVendors] = useState(true);
   const [errorVendors, setErrorVendors] = useState("");
 
-  // Categories for the grid
+  // Categories
   const [categories, setCategories] = useState([]);
   const [loadingCats, setLoadingCats] = useState(true);
   const [errorCats, setErrorCats] = useState("");
-
-  // Local theme toggle for this page
-  const [theme, setTheme] = useState("dark"); // 'dark' | 'light'
-  const nextIcon = useMemo(() => (theme === "dark" ? "fa-sun" : "fa-moon"), [theme]);
-  const nextLabel = useMemo(() => (theme === "dark" ? "Switch to light" : "Switch to dark"), [theme]);
 
   useEffect(() => {
     let alive = true;
@@ -74,9 +69,9 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className={`landing-theme ${theme}`}>
+    <div className="landing-theme">
       <style>{`
-        /* THEME TOKENS (scoped to .landing-theme) */
+        /* ================= THEME TOKENS (Dock style) ================= */
         .landing-theme {
           --bg: #0b0614;
           --bg-soft: #100a1f;
@@ -87,28 +82,33 @@ export default function Landing() {
           --accent: #0d6efd;
           --accent-2: #6f42c1;
           --glass: rgba(6,0,16,.85);
-          --shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
+          --shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.03);
+          --chip-bg: rgba(255,255,255,.06);
+          --btn-outline-border: #2b2444;
+          --btn-outline-hover: #16102a;
         }
-        .landing-theme.light {
-          --bg: #f8f9fb;
+        /* Honor global theme (data-theme="light" or .light anywhere up the tree) */
+        :where([data-theme="light"], html[data-theme="light"], body[data-theme="light"], html.light, body.light, .light) .landing-theme {
+          --bg: #f5f7fb;
           --bg-soft: #ffffff;
           --panel: #ffffff;
-          --panel-border: #e8e8ef;
-          --text: #1c1c28;
-          --text-muted: #5c5e6a;
-          --accent: #0d6efd;
+          --panel-border: #e6e8f1;
+          --text: #16161a;
+          --text-muted: #6b6f7d;
+          --accent: #0b5ed7;
           --accent-2: #6f42c1;
-          --glass: rgba(255,255,255,.9);
+          --glass: rgba(255,255,255,.92);
           --shadow: 0 10px 24px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.6);
-        }
-        .landing-theme {
-          background: var(--bg);
-          color: var(--text);
+          --chip-bg: rgba(0,0,0,.04);
+          --btn-outline-border: #dfe3ef;
+          --btn-outline-hover: #f3f5fb;
         }
 
+        /* Page surface */
+        .landing-theme { background: var(--bg); color: var(--text); }
         .container { padding-top: 1rem; }
 
-        /* HERO */
+        /* ================= HERO ================= */
         .hero {
           position: relative; overflow: hidden; border-radius: 16px;
           border: 1px solid var(--panel-border);
@@ -116,17 +116,18 @@ export default function Landing() {
             radial-gradient(1200px 400px at 10% 10%, color-mix(in oklab, var(--accent-2) 35%, transparent), transparent 55%),
             radial-gradient(800px 300px at 90% 0%, color-mix(in oklab, var(--accent) 35%, transparent), transparent 50%),
             linear-gradient(180deg, var(--bg-soft) 0%, var(--bg) 70%, var(--bg) 100%);
+          box-shadow: var(--shadow);
         }
         .hero-inner { padding: clamp(1.25rem, 2.5vw, 2rem); }
-        .hero h1 { color: var(--text); letter-spacing: .2px; }
+        .hero h1 { color: var(--text); letter-spacing:.2px; }
         .hero p { color: var(--text-muted); }
         .hero-badge {
           display:inline-flex; align-items:center; gap:.5rem;
           padding:.5rem .75rem; border-radius:999px;
           border:1px solid var(--panel-border);
           background: var(--glass);
-          backdrop-filter: blur(6px);
           color: var(--text);
+          backdrop-filter: blur(6px);
         }
         .hero-card {
           height: 220px; border-radius: 12px; border: 1px solid var(--panel-border);
@@ -135,19 +136,7 @@ export default function Landing() {
           color: var(--text-muted);
         }
 
-        /* THEME TOGGLE */
-        .theme-toggle {
-          position:absolute; top: 12px; right: 12px; z-index:2;
-          width: 40px; height: 40px; border-radius: 10px;
-          display:flex; align-items:center; justify-content:center;
-          background: var(--glass); border: 1px solid var(--panel-border);
-          color: var(--text);
-          box-shadow: var(--shadow);
-          cursor: pointer;
-        }
-        .theme-toggle:hover { transform: translateY(-1px); }
-
-        /* SECTIONS */
+        /* ================= SECTIONS ================= */
         .section {
           border: 1px solid var(--panel-border); border-radius: 14px;
           background: var(--panel);
@@ -155,52 +144,60 @@ export default function Landing() {
         }
         .section-hd {
           display:flex; align-items:center; justify-content:space-between;
-          padding: .85rem 1rem; border-bottom:1px solid var(--panel-border); color: var(--text);
+          padding:.85rem 1rem; border-bottom:1px solid var(--panel-border);
+          color: var(--text);
         }
         .section-body { padding: 1rem; }
 
-        /* CATEGORY GRID */
-        .cat-grid { display:grid; gap: .75rem; grid-template-columns: repeat(2, 1fr); }
+        /* Buttons that should adapt in both themes */
+        .btn-outline-light {
+          --bs-btn-color: var(--text);
+          --bs-btn-border-color: var(--btn-outline-border);
+          --bs-btn-hover-bg: var(--btn-outline-hover);
+          --bs-btn-hover-color: var(--text);
+          --bs-btn-hover-border-color: var(--btn-outline-border);
+          --bs-btn-active-bg: var(--btn-outline-hover);
+          --bs-btn-active-border-color: var(--btn-outline-border);
+        }
+
+        /* ================= CATEGORY GRID ================= */
+        .cat-grid { display:grid; gap:.75rem; grid-template-columns: repeat(2, 1fr); }
         @media (min-width: 576px) { .cat-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (min-width: 992px) { .cat-grid { grid-template-columns: repeat(6, 1fr); } }
+
         .cat-tile {
           display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-end;
-          min-height: 110px; padding: .85rem;
-          border-radius: 12px; border: 1px solid var(--panel-border);
+          min-height:110px; padding:.85rem; border-radius:12px;
+          border:1px solid var(--panel-border);
           background: linear-gradient(160deg, color-mix(in oklab, var(--accent) 10%, transparent), transparent 60%), var(--bg-soft);
           color: var(--text);
           transition: transform .15s ease, border-color .15s ease, background .15s ease;
-          cursor: pointer; text-decoration: none;
+          cursor:pointer; text-decoration:none;
         }
         .cat-tile:hover { transform: translateY(-2px); border-color: color-mix(in oklab, var(--accent) 40%, var(--panel-border)); }
-        .cat-icon {
-          width: 36px; height: 36px; border-radius: 10px;
-          display:flex; align-items:center; justify-content:center;
-          background: var(--glass); border: 1px solid var(--panel-border);
-          margin-bottom: .5rem; color: var(--text);
-        }
-        .cat-name { font-weight: 700; line-height: 1.1; }
-        .cat-count { font-size: 12px; color: var(--text-muted); }
 
-        /* Buttons */
-        .btn-light-ghost {
-          color: var(--text); border-color: var(--panel-border); background: transparent;
+        .cat-icon {
+          width:36px; height:36px; border-radius:10px;
+          display:flex; align-items:center; justify-content:center;
+          background: var(--chip-bg);
+          border: 1px solid var(--panel-border);
+          margin-bottom:.5rem; color: var(--text);
         }
-        .btn-light-ghost:hover { background: var(--bg-soft); }
+        .cat-name { font-weight: 800; line-height: 1.1; }
+        .cat-count { font-size:12px; color: var(--text-muted); }
+
+        /* Ghost button used in hero (adapts) */
+        .btn-light-ghost {
+          color: var(--text);
+          border: 1px solid var(--btn-outline-border);
+          background: transparent;
+        }
+        .btn-light-ghost:hover { background: var(--btn-outline-hover); }
       `}</style>
 
       <div className="container">
         {/* HERO */}
         <div className="hero mb-4 position-relative">
-          <button
-            className="theme-toggle"
-            aria-label={nextLabel}
-            title={nextLabel}
-            onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-          >
-            <i className={`fa ${nextIcon}`} />
-          </button>
-
           <div className="hero-inner">
             <div className="row align-items-center g-3">
               <div className="col-lg-7">
@@ -234,7 +231,7 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* TOP CATEGORIES (right under hero) */}
+        {/* TOP CATEGORIES */}
         <div className="section mb-4">
           <div className="section-hd">
             <h5 className="mb-0 fw-bold">Top Categories</h5>
@@ -262,7 +259,9 @@ export default function Landing() {
                     </div>
                     <div className="cat-name">{cat.title || cat.name}</div>
                     {typeof cat.product_count === "number" && (
-                      <div className="cat-count">{cat.product_count} item{cat.product_count === 1 ? "" : "s"}</div>
+                      <div className="cat-count">
+                        {cat.product_count} item{cat.product_count === 1 ? "" : "s"}
+                      </div>
                     )}
                   </button>
                 ))}

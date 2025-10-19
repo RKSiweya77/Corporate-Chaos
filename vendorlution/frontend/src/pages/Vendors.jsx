@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import api from "../api/axios";
-import API_ENDPOINTS from "../api/endpoints";
+import { API_ENDPOINTS } from "../api/endpoints"; // consistent named import
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import EmptyState from "../components/shared/EmptyState";
 import VendorCard from "../components/marketplace/VendorCard";
@@ -26,7 +26,7 @@ export default function Vendors() {
   const [sortBy, setSortBy] = useState(searchParams.get("sort") || "");
   const [verifiedOnly, setVerifiedOnly] = useState(searchParams.get("verified") === "true");
 
-  // Debounced search
+  // Debounced search -> URL
   const debouncedSearch = useCallback(() => {
     const timer = setTimeout(() => {
       const newParams = new URLSearchParams();
@@ -83,7 +83,7 @@ export default function Vendors() {
       setCheckingShop(true);
 
       try {
-        // 1) Quick client hints from the auth payload
+        // 1) Client hints from auth payload
         const hinted =
           user?.has_shop ||
           user?.is_vendor ||
@@ -100,7 +100,7 @@ export default function Vendors() {
           return;
         }
 
-        // 2) Prefer a vendor "me/mine" endpoint if defined in endpoints
+        // 2) Prefer vendor me/mine endpoints if present
         if (API_ENDPOINTS?.vendors?.me) {
           try {
             const meRes = await api.get(API_ENDPOINTS.vendors.me);
@@ -109,7 +109,7 @@ export default function Vendors() {
               return;
             }
           } catch {
-            // fall through
+            /* ignore */
           }
         }
         if (API_ENDPOINTS?.vendors?.mine) {
@@ -123,11 +123,11 @@ export default function Vendors() {
               if (has) return;
             }
           } catch {
-            // fall through
+            /* ignore */
           }
         }
 
-        // 3) Fallback: search vendor list by owner/user id with common param names
+        // 3) Fallback: query by owner/user id with common param names
         if (user?.id) {
           const attempts = [
             { owner: user.id },
@@ -147,7 +147,7 @@ export default function Vendors() {
                 return;
               }
             } catch {
-              // try next attempt
+              /* try next */
             }
           }
         }
@@ -175,190 +175,278 @@ export default function Vendors() {
   const hasActiveFilters = q || sortBy || verifiedOnly;
 
   return (
-    <div className="container py-4">
-      {/* Page Header */}
-      <div className="row mb-4">
-        <div className="col-12">
-          <div className="d-flex justify-content-between align-items-center">
-            <div>
-              <h1 className="h2 fw-bold mb-1">Vendors</h1>
-              <p className="text-muted mb-0">
-                Shop from trusted vendors with escrow protection
-              </p>
-            </div>
-            <div className="text-end d-none d-md-block">
-              <small className="text-muted">
-                {!loading && `${vendors.length} vendor${vendors.length !== 1 ? "s" : ""} found`}
-              </small>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="vendors-theme">
+      <style>{`
+        /* ================= Dock-style tokens ================= */
+        .vendors-theme {
+          --bg: #0b0614;
+          --panel: #0b0614;
+          --panel-soft: #100a1f;
+          --panel-border: #1f1932;
+          --text: #e7e6ea;
+          --text-muted: #bfb9cf;
+          --control-bg: #0f0a1d;
+          --control-border: #2b2444;
+          --control-focus: #3b315e;
+          --outline: rgba(0,0,0,.9);
+          --shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.03);
+          --primary: #0d6efd;
+          background: var(--bg);
+          color: var(--text);
+        }
+        :where([data-theme="light"], html.light, body.light, .light) .vendors-theme {
+          --bg: #f5f7fb;
+          --panel: #ffffff;
+          --panel-soft: #ffffff;
+          --panel-border: #e6e8f1;
+          --text: #16161a;
+          --text-muted: #6b6f7d;
+          --control-bg: #ffffff;
+          --control-border: #dfe3ef;
+          --control-focus: #cfd8f6;
+          --outline: rgba(0,0,0,1);
+          --shadow: 0 10px 24px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.6);
+        }
 
-      <div className="row g-4">
-        {/* Filters */}
-        <div className="col-12">
-          <div className="card">
-            <div className="card-body">
-              <div className="row g-3 align-items-end">
-                {/* Search */}
-                <div className="col-12 col-md-4 col-lg-5">
-                  <label htmlFor="vendorSearch" className="form-label small fw-bold">
-                    Search Vendors
-                  </label>
-                  <input
-                    id="vendorSearch"
-                    className="form-control"
-                    placeholder="Search by vendor name..."
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                  />
-                </div>
+        .vendors-theme .text-muted { color: var(--text-muted) !important; }
 
-                {/* Sort */}
-                <div className="col-6 col-md-3 col-lg-3">
-                  <label htmlFor="vendorSort" className="form-label small fw-bold">
-                    Sort By
-                  </label>
-                  <select
-                    id="vendorSort"
-                    className="form-select"
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                  >
-                    <option value="">Featured</option>
-                    <option value="name">Name: A to Z</option>
-                    <option value="-name">Name: Z to A</option>
-                    <option value="-rating">Highest Rated</option>
-                    <option value="-product_count">Most Products</option>
-                    <option value="-created_at">Newest First</option>
-                  </select>
-                </div>
+        /* Panels */
+        .v-panel {
+          background: var(--panel);
+          border: 1px solid var(--panel-border);
+          border-radius: 14px;
+          box-shadow: var(--shadow);
+          overflow: hidden;
+        }
+        .v-panel-header {
+          background: var(--panel);
+          border-bottom: 1px solid var(--panel-border);
+          color: var(--text);
+        }
 
-                {/* Verified Filter */}
-                <div className="col-6 col-md-3 col-lg-2">
-                  <div className="form-check">
-                    <input
-                      className="form-check-input"
-                      type="checkbox"
-                      id="verifiedOnly"
-                      checked={verifiedOnly}
-                      onChange={(e) => setVerifiedOnly(e.target.checked)}
-                    />
-                    <label className="form-check-label small fw-bold" htmlFor="verifiedOnly">
-                      Verified Only
-                    </label>
-                  </div>
-                </div>
+        /* Controls */
+        .v-control, .v-select {
+          background: var(--control-bg) !important;
+          color: var(--text) !important;
+          border: 1px solid var(--control-border) !important;
+        }
+        .v-control::placeholder { color: color-mix(in oklab, var(--text) 60%, transparent) }
+        .v-control:focus, .v-select:focus {
+          border-color: var(--control-focus) !important;
+          box-shadow: none !important;
+          outline: 2px solid var(--outline);
+          outline-offset: 0;
+        }
 
-                {/* Clear Filters */}
-                <div className="col-12 col-md-2 col-lg-2">
-                  {hasActiveFilters && (
-                    <button className="btn btn-outline-secondary w-100" onClick={clearFilters}>
-                      <i className="fa fa-times me-2" />
-                      Clear All
-                    </button>
-                  )}
-                </div>
+        /* Outline button that adapts */
+        .btn-outline-secondary, .btn-outline-dark {
+          --bs-btn-color: var(--text);
+          --bs-btn-border-color: var(--control-border);
+          --bs-btn-hover-bg: var(--panel-soft);
+          --bs-btn-hover-color: var(--text);
+          --bs-btn-hover-border-color: var(--control-border);
+          --bs-btn-active-bg: var(--panel-soft);
+          --bs-btn-active-border-color: var(--control-border);
+        }
+
+        /* Toolbar (filters row panel) */
+        .v-toolbar { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 14px; box-shadow: var(--shadow); }
+
+        /* CTA panel gradient */
+        .v-cta {
+          background:
+            linear-gradient(180deg, color-mix(in oklab, var(--primary) 10%, var(--panel-soft)), var(--panel));
+          border: 1px solid var(--panel-border);
+          border-radius: 14px;
+          box-shadow: var(--shadow);
+          color: var(--text);
+        }
+      `}</style>
+
+      <div className="container py-4">
+        {/* Page Header */}
+        <div className="row mb-4">
+          <div className="col-12">
+            <div className="d-flex justify-content-between align-items-center">
+              <div>
+                <h1 className="h2 fw-bold mb-1" style={{ color: "var(--text)" }}>Vendors</h1>
+                <p className="text-muted mb-0">Shop from trusted vendors with escrow protection</p>
+              </div>
+              <div className="text-end d-none d-md-block">
+                <small className="text-muted">
+                  {!loading && `${vendors.length} vendor${vendors.length !== 1 ? "s" : ""} found`}
+                </small>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Results */}
-        <div className="col-12">
-          {loading ? (
-            <LoadingSpinner fullPage message="Loading vendors..." />
-          ) : error ? (
-            <EmptyState
-              title="Unable to load vendors"
-              subtitle={error}
-              icon="fa-exclamation-triangle"
-              action={
-                <button className="btn btn-primary" onClick={() => window.location.reload()}>
-                  <i className="fa fa-refresh me-2" />
-                  Try Again
-                </button>
-              }
-            />
-          ) : vendors.length === 0 ? (
-            <EmptyState
-              title={hasActiveFilters ? "No vendors match your search" : "No vendors available"}
-              subtitle={hasActiveFilters ? "Try adjusting your search criteria" : "Check back soon for new vendors"}
-              icon="fa-store-slash"
-              action={
-                hasActiveFilters && (
-                  <button className="btn btn-outline-dark" onClick={clearFilters}>
-                    <i className="fa fa-times me-2" />
-                    Clear Filters
+        <div className="row g-4">
+          {/* Filters */}
+          <div className="col-12">
+            <div className="v-toolbar">
+              <div className="px-3 py-3">
+                <div className="row g-3 align-items-end">
+                  {/* Search */}
+                  <div className="col-12 col-md-4 col-lg-5">
+                    <label htmlFor="vendorSearch" className="form-label small fw-bold" style={{ color: "var(--text)" }}>
+                      Search Vendors
+                    </label>
+                    <input
+                      id="vendorSearch"
+                      className="form-control v-control"
+                      placeholder="Search by vendor name..."
+                      value={q}
+                      onChange={(e) => setQ(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Sort */}
+                  <div className="col-6 col-md-3 col-lg-3">
+                    <label htmlFor="vendorSort" className="form-label small fw-bold" style={{ color: "var(--text)" }}>
+                      Sort By
+                    </label>
+                    <select
+                      id="vendorSort"
+                      className="form-select v-select"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                    >
+                      <option value="">Featured</option>
+                      <option value="name">Name: A to Z</option>
+                      <option value="-name">Name: Z to A</option>
+                      <option value="-rating">Highest Rated</option>
+                      <option value="-product_count">Most Products</option>
+                      <option value="-created_at">Newest First</option>
+                    </select>
+                  </div>
+
+                  {/* Verified Filter */}
+                  <div className="col-6 col-md-3 col-lg-2">
+                    <div className="form-check" style={{ color: "var(--text)" }}>
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id="verifiedOnly"
+                        checked={verifiedOnly}
+                        onChange={(e) => setVerifiedOnly(e.target.checked)}
+                      />
+                      <label className="form-check-label small fw-bold" htmlFor="verifiedOnly">
+                        Verified Only
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Clear Filters */}
+                  <div className="col-12 col-md-2 col-lg-2">
+                    {hasActiveFilters && (
+                      <button className="btn btn-outline-secondary w-100" onClick={clearFilters}>
+                        <i className="fa fa-times me-2" />
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Results */}
+          <div className="col-12">
+            {loading ? (
+              <LoadingSpinner fullPage message="Loading vendors..." />
+            ) : error ? (
+              <EmptyState
+                title="Unable to load vendors"
+                subtitle={error}
+                icon="fa-exclamation-triangle"
+                action={
+                  <button className="btn btn-primary" onClick={() => window.location.reload()}>
+                    <i className="fa fa-refresh me-2" />
+                    Try Again
                   </button>
-                )
-              }
-            />
-          ) : (
-            <>
-              {/* Vendor Stats Bar */}
-              <div className="row mb-4">
-                <div className="col-12">
-                  <div className="card bg-light">
-                    <div className="card-body py-3">
-                      <div className="row text-center">
-                        <div className="col-4 col-md-2">
-                          <div className="h5 fw-bold text-primary mb-1">{vendors.length}</div>
-                          <small className="text-muted">Total Vendors</small>
-                        </div>
-                        <div className="col-4 col-md-2">
-                          <div className="h5 fw-bold text-success mb-1">
-                            {vendors.filter((v) => v.verified || v.is_verified).length}
+                }
+              />
+            ) : vendors.length === 0 ? (
+              <EmptyState
+                title={hasActiveFilters ? "No vendors match your search" : "No vendors available"}
+                subtitle={hasActiveFilters ? "Try adjusting your search criteria" : "Check back soon for new vendors"}
+                icon="fa-store-slash"
+                action={
+                  hasActiveFilters && (
+                    <button className="btn btn-outline-dark" onClick={clearFilters}>
+                      <i className="fa fa-times me-2" />
+                      Clear Filters
+                    </button>
+                  )
+                }
+              />
+            ) : (
+              <>
+                {/* Vendor Stats Bar */}
+                <div className="row mb-4">
+                  <div className="col-12">
+                    <div className="v-panel">
+                      <div className="px-3 py-3">
+                        <div className="row text-center">
+                          <div className="col-4 col-md-2">
+                            <div className="h5 fw-bold text-primary mb-1">{vendors.length}</div>
+                            <small className="text-muted">Total Vendors</small>
                           </div>
-                          <small className="text-muted">Verified</small>
-                        </div>
-                        <div className="col-4 col-md-2">
-                          <div className="h5 fw-bold text-warning mb-1">
-                            {vendors.filter((v) => v.featured).length}
+                          <div className="col-4 col-md-2">
+                            <div className="h5 fw-bold text-success mb-1">
+                              {vendors.filter((v) => v.verified || v.is_verified).length}
+                            </div>
+                            <small className="text-muted">Verified</small>
                           </div>
-                          <small className="text-muted">Featured</small>
-                        </div>
-                        <div className="col-6 col-md-3">
-                          <div className="h5 fw-bold text-info mb-1">
-                            {vendors.reduce((sum, v) => sum + (v.product_count || 0), 0)}
+                          <div className="col-4 col-md-2">
+                            <div className="h5 fw-bold text-warning mb-1">
+                              {vendors.filter((v) => v.featured).length}
+                            </div>
+                            <small className="text-muted">Featured</small>
                           </div>
-                          <small className="text-muted">Total Products</small>
-                        </div>
-                        <div className="col-6 col-md-3">
-                          <div className="h5 fw-bold text-dark mb-1">
-                            {vendors.length > 0
-                              ? (vendors.reduce((sum, v) => sum + (v.rating || v.rating_avg || 0), 0) / vendors.length).toFixed(1)
-                              : "0.0"}
-                            /5
+                          <div className="col-6 col-md-3">
+                            <div className="h5 fw-bold text-info mb-1">
+                              {vendors.reduce((sum, v) => sum + (v.product_count || v.products_count || 0), 0)}
+                            </div>
+                            <small className="text-muted">Total Products</small>
                           </div>
-                          <small className="text-muted">Average Rating</small>
+                          <div className="col-6 col-md-3">
+                            <div className="h5 fw-bold mb-1" style={{ color: "var(--text)" }}>
+                              {vendors.length > 0
+                                ? (
+                                    vendors.reduce((sum, v) => sum + (v.rating || v.rating_avg || 0), 0) /
+                                    vendors.length
+                                  ).toFixed(1)
+                                : "0.0"}
+                              /5
+                            </div>
+                            <small className="text-muted">Average Rating</small>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Vendor Grid */}
-              <div className="row g-3">
-                {vendors.map((vendor) => (
-                  <div className="col-6 col-md-4 col-lg-3" key={vendor.id}>
-                    <VendorCard vendor={vendor} />
-                  </div>
-                ))}
-              </div>
+                {/* Vendor Grid */}
+                <div className="row g-3">
+                  {vendors.map((vendor) => (
+                    <div className="col-6 col-md-4 col-lg-3" key={vendor.id}>
+                      <VendorCard vendor={vendor} />
+                    </div>
+                  ))}
+                </div>
 
-              {/* Start Selling / Vendor Dashboard CTA */}
-              {!checkingShop && (
-                <div className="row mt-5">
-                  <div className="col-12">
-                    <div className={`card ${hasShop ? "bg-light text-dark" : "bg-dark text-white"}`}>
-                      <div className="card-body text-center p-4">
+                {/* Start Selling / Vendor Dashboard CTA */}
+                {!checkingShop && (
+                  <div className="row mt-5">
+                    <div className="col-12">
+                      <div className="v-cta text-center p-4">
                         {hasShop ? (
                           <>
-                            <h5 className="card-title mb-3">You're a Vendor 🚀</h5>
-                            <p className="card-text mb-3 opacity-75">
+                            <h5 className="mb-3" style={{ color: "var(--text)" }}>You're a Vendor 🚀</h5>
+                            <p className="mb-3" style={{ color: "var(--text-muted)" }}>
                               Manage your products, orders and analytics from your dashboard.
                             </p>
                             <Link to="/vendor/dashboard" className="btn btn-primary">
@@ -368,8 +456,8 @@ export default function Vendors() {
                           </>
                         ) : (
                           <>
-                            <h5 className="card-title mb-3">Become a Vendor</h5>
-                            <p className="card-text mb-3 opacity-75">
+                            <h5 className="mb-3" style={{ color: "var(--text)" }}>Become a Vendor</h5>
+                            <p className="mb-3" style={{ color: "var(--text-muted)" }}>
                               Join our marketplace and start selling with escrow protection today.
                             </p>
                             <Link to="/vendor/create-shop" className="btn btn-light">
@@ -381,11 +469,14 @@ export default function Vendors() {
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </>
-          )}
+                )}
+              </>
+            )}
+          </div>
         </div>
+
+        {/* spacing so the bottom dock never overlaps */}
+        <div style={{ height: 96 }} />
       </div>
     </div>
   );
