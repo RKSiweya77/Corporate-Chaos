@@ -9,14 +9,13 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
-
     services:
       postgres:
         image: postgres:15
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: "Phraser18$"
-          POSTGRES_DB: vendorlution
+          POSTGRES_DB: vendorlution 
         ports:
           - 5432:5432
         options: >-
@@ -24,7 +23,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
     defaults:
       run:
         working-directory: ./vendorlution/backend
@@ -34,7 +32,7 @@ jobs:
       DB_PORT: 5432
       DB_NAME: vendorlution
       DB_USER: postgres
-      DB_PASSWORD: "Phraser18$"
+      DB_PASSWORD: Phraser18$
       DJANGO_SECRET_KEY: test_secret_key
       DJANGO_DEBUG: "True"
 
@@ -52,7 +50,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Wait for PostgreSQL
+      - name: Wait for PostgreSQL to be ready
         run: |
           until pg_isready -h localhost -p 5432 -U postgres; do
             echo "Waiting for PostgreSQL..."
@@ -61,9 +59,7 @@ jobs:
 
       - name: Reset database
         run: |
-          echo "Dropping existing database if exists..."
           PGPASSWORD="Phraser18$" psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS vendorlution;"
-          echo "Creating new database..."
           PGPASSWORD="Phraser18$" psql -h localhost -U postgres -c "CREATE DATABASE vendorlution;"
 
       - name: Run migrations
@@ -77,8 +73,6 @@ jobs:
     defaults:
       run:
         working-directory: ./vendorlution/frontend
-
-    needs: backend
 
     steps:
       - name: Checkout code
