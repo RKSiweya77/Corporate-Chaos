@@ -15,7 +15,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: "Phraser18$"
-          POSTGRES_DB: vendorlution 
+          POSTGRES_DB: vendorlution
         ports:
           - 5432:5432
         options: >-
@@ -33,7 +33,7 @@ jobs:
       DB_PORT: 5432
       DB_NAME: vendorlution
       DB_USER: postgres
-      DB_PASSWORD: Phraser18$
+      DB_PASSWORD: "Phraser18$"
       DJANGO_SECRET_KEY: test_secret_key
       DJANGO_DEBUG: "True"
 
@@ -58,8 +58,10 @@ jobs:
             sleep 2
           done
 
-      - name: Create database
+      # ✅ Conditional database creation (avoids "already exists" error)
+      - name: Create database if not exists
         run: |
+          PGPASSWORD="Phraser18$" psql -h localhost -U postgres -tc "SELECT 1 FROM pg_database WHERE datname='vendorlution'" | grep -q 1 || \
           PGPASSWORD="Phraser18$" psql -h localhost -U postgres -c "CREATE DATABASE vendorlution;"
 
       - name: Run migrations
@@ -82,15 +84,4 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run frontend tests
-        run: npm test -- --watchAll=false
-
-      - name: Build frontend
-        run: npm run build
+        uses: actions/setup-no
