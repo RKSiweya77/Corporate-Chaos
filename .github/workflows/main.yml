@@ -14,8 +14,8 @@ jobs:
         image: postgres:15
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: Phraser18$
-          POSTGRES_DB: postgres  # initial default DB
+          POSTGRES_PASSWORD: "Phraser18$"
+          POSTGRES_DB: vendorlution 
         ports:
           - 5432:5432
         options: >-
@@ -29,11 +29,11 @@ jobs:
         working-directory: ./vendorlution/backend
 
     env:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: vendorlution
-      POSTGRES_HOST: localhost
-      POSTGRES_PORT: 5432
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: vendorlution
+      DB_USER: postgres
+      DB_PASSWORD: Phraser18$
       DJANGO_SECRET_KEY: test_secret_key
       DJANGO_DEBUG: "True"
 
@@ -60,7 +60,7 @@ jobs:
 
       - name: Create database
         run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE vendorlution;"
+          PGPASSWORD="Phraser18$" psql -h localhost -U postgres -c "CREATE DATABASE vendorlution;"
 
       - name: Run migrations
         run: |
