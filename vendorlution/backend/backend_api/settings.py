@@ -1,12 +1,21 @@
-# backend/backend_api/settings.py - COMPLETE COPY-PASTE READY
+# backend/backend_api/settings.py
+import os
 from pathlib import Path
 from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "django-insecure-temp-key"
-DEBUG = True
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "*.ngrok.io"]  # Added ngrok support
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-temp-key")
+DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() == "true"
+
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+    os.environ.get("NGROK_HOST", "").replace("https://", "").replace("http://", ""),
+]
+
+NGROK_HOST = os.environ.get("NGROK_HOST", "").rstrip("/")
+FRONTEND_ORIGIN = os.environ.get("FRONTEND_ORIGIN", "http://127.0.0.1:3000")
 
 # ---------------- Installed apps ----------------
 INSTALLED_APPS = [
@@ -23,13 +32,13 @@ INSTALLED_APPS = [
 
     # Local
     "main",
-    "wallet",  # Wallet app
+    "wallet",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "corsheaders.middleware.CorsMiddleware",  # CORS before CommonMiddleware
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -61,11 +70,11 @@ WSGI_APPLICATION = "backend_api.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "vendorlution",
-        "USER": "postgres",
-        "PASSWORD": "Phraser18$",
-        "HOST": "localhost",
-        "PORT": "5432",
+        "NAME": os.environ.get("POSTGRES_DB", "vendorlution"),
+        "USER": os.environ.get("POSTGRES_USER", "postgres"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "Phraser18$"),
+        "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
     }
 }
 
@@ -116,58 +125,89 @@ SIMPLE_JWT = {
     "ALGORITHM": "HS256",
 }
 
-# ---------------- CORS (React) ----------------
+# ---------------- CORS / CSRF ----------------
 CORS_ALLOWED_ORIGINS = [
+    FRONTEND_ORIGIN,
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
+if NGROK_HOST:
+    # Allow the exact ngrok origin for CORS/CSRF in dev
+    for scheme in ("https://", "http://"):
+        CORS_ALLOWED_ORIGINS.append(f"{scheme}{NGROK_HOST.replace('https://','').replace('http://','')}")
+    CSRF_TRUSTED_ORIGINS = [
+        f"https://{NGROK_HOST.replace('https://','').replace('http://','')}",
+        f"http://{NGROK_HOST.replace('https://','').replace('http://','')}",
+        FRONTEND_ORIGIN,
+    ]
+else:
+    CSRF_TRUSTED_ORIGINS = [FRONTEND_ORIGIN]
 
-# Allow credentials for session/cookie auth
 CORS_ALLOW_CREDENTIALS = True
 
-# Allow ngrok in development
+# In dev, you can allow all origins (useful when NGROK rotates)
 if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True  # Only for dev with ngrok
+    CORS_ALLOW_ALL_ORIGINS = True
 
-# Dev fallback vendor (if used by older views)
-DEV_MODE_DEFAULT_VENDOR_ID = 1
+# ---------------- Dev fallback ----------------
+DEV_MODE_DEFAULT_VENDOR_ID = int(os.environ.get("DEV_MODE_DEFAULT_VENDOR_ID", "1"))
 
 # ---------------- WALLET / PAYMENTS ----------------
-# Global live/sandbox flag
-LIVE_MODE = False  # set True in production
+LIVE_MODE = os.environ.get("LIVE_MODE", "false").lower() == "true"
 
 # === Ozow (Instant EFT) ===
-# ⚠️ REPLACE THESE WITH YOUR ACTUAL SANDBOX CREDENTIALS FROM OZOW
-# Get them from: https://ozow.com → Developer Portal
-OZOW_API_KEY = "PLACEHOLDER_REPLACE_ME"  # Replace with your sandbox API key
-OZOW_SITE_CODE = "PLACEHOLDER_REPLACE_ME"  # Replace with your sandbox site code
-OZOW_PRIVATE_KEY = "PLACEHOLDER_REPLACE_ME"  # Replace with your sandbox private key
+OZOW_API_BASE = os.environ.get(
+    "OZOW_API_BASE",
+    "https://stagingapi.ozow.com" if not LIVE_MODE else "https://api.ozow.com",
+)
 
-# Absolute URLs required by Ozow
-OZOW_SUCCESS_URL = "http://127.0.0.1:3000/wallet/deposit/success"
-OZOW_CANCEL_URL = "http://127.0.0.1:3000/wallet/deposit/cancel"
-OZOW_ERROR_URL = "http://127.0.0.1:3000/wallet/deposit/error"
+OZOW_API_KEY = os.environ.get("OZOW_API_KEY", "PLACEHOLDER_REPLACE_ME")
+OZOW_SITE_CODE = os.environ.get("OZOW_SITE_CODE", "PLACEHOLDER_REPLACE_ME")
+OZOW_PRIVATE_KEY = os.environ.get("OZOW_PRIVATE_KEY", "PLACEHOLDER_REPLACE_ME")
 
-# ⚠️ IMPORTANT: When testing locally with ngrok, update this to your ngrok URL:
-# Example: "https://abc123.ngrok.io/api/wallet/webhooks/ozow/"
-OZOW_NOTIFY_URL = "http://127.0.0.1:8000/api/wallet/webhooks/ozow/"
+# Public callback URLs (prefer .env overrides; fall back to typical dev defaults)
+OZOW_SUCCESS_URL = os.environ.get(
+    "OZOW_SUCCESS_URL", f"{FRONTEND_ORIGIN}/wallet/deposit/success"
+)
+OZOW_CANCEL_URL = os.environ.get(
+    "OZOW_CANCEL_URL", f"{FRONTEND_ORIGIN}/wallet/deposit/cancel"
+)
+OZOW_ERROR_URL = os.environ.get(
+    "OZOW_ERROR_URL", f"{FRONTEND_ORIGIN}/wallet/deposit/error"
+)
+OZOW_NOTIFY_URL = os.environ.get(
+    "OZOW_NOTIFY_URL",
+    (f"{NGROK_HOST}/api/wallet/webhooks/ozow/" if NGROK_HOST else "http://127.0.0.1:8000/api/wallet/webhooks/ozow/"),
+)
 
-# Environment toggle for Ozow
-OZOW_IS_TEST = not LIVE_MODE  # True -> staging, False -> live
+# Toggle for staging/live behavior
+OZOW_IS_TEST = os.environ.get("OZOW_IS_TEST", "true" if not LIVE_MODE else "false").lower() == "true"
 
-# === Peach Payments (Cards/EFT Secure) - PLACEHOLDER ===
-PEACH_ENTITY_ID = "8ac7a4cxxxxxxx"  # Replace when you get credentials
-PEACH_API_PASSWORD = "test_peach_pwd"  # Replace when you get credentials
-PEACH_BASE_URL = "https://eu-test.oppwa.com/v1"
-PEACH_NOTIFY_URL = "http://127.0.0.1:8000/api/wallet/webhooks/peach/"
+# === Peach Payments (placeholders) ===
+PEACH_ENTITY_ID = os.environ.get("PEACH_ENTITY_ID", "8ac7a4cxxxxxxx")
+PEACH_API_PASSWORD = os.environ.get("PEACH_API_PASSWORD", "test_peach_pwd")
+PEACH_BASE_URL = os.environ.get("PEACH_BASE_URL", "https://eu-test.oppwa.com/v1")
+PEACH_NOTIFY_URL = os.environ.get(
+    "PEACH_NOTIFY_URL",
+    (f"{NGROK_HOST}/api/wallet/webhooks/peach/" if NGROK_HOST else "http://127.0.0.1:8000/api/wallet/webhooks/peach/"),
+)
 
-# === Vouchers (1Voucher, Kazang, etc.) ===
-VOUCHER_LIVE = False
+# === Vouchers ===
+VOUCHER_LIVE = os.environ.get("VOUCHER_LIVE", "false").lower() == "true"
 VOUCHER_ACCEPTED_ISSUERS = ["1VOUCHER", "OTT", "BLU", "KAZANG", "FLASH"]
 
 # === Payouts ===
-PAYOUT_LIVE = False
-PAYOUT_MIN_AMOUNT = "10.00"  # Minimum R 10 withdrawal
+PAYOUT_LIVE = os.environ.get("PAYOUT_LIVE", "false").lower() == "true"
+PAYOUT_MIN_AMOUNT = os.environ.get("PAYOUT_MIN_AMOUNT", "10.00")
 
 # === Platform Fees ===
-PLATFORM_FEE_PERCENT = "0.05"  # 5% platform fee on sales
+PLATFORM_FEE_PERCENT = os.environ.get("PLATFORM_FEE_PERCENT", "0.05")
+
+# ---------------- Logging (useful while integrating Ozow) ----------------
+LOG_LEVEL = os.environ.get("DJANGO_LOG_LEVEL", "INFO")
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["console"], "level": LOG_LEVEL},
+}

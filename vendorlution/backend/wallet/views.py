@@ -1,16 +1,17 @@
-# wallet/views.py - COMPLETE FINAL VERSION
 from __future__ import annotations
 
 import json
 import re
+import uuid
 from decimal import Decimal, InvalidOperation
 
+import requests
 from django.conf import settings
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction as db_transaction
 
-from rest_framework import permissions, status
+from rest_framework import permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,19 +19,23 @@ from rest_framework.views import APIView
 from .models import Wallet, LedgerEntry, PaymentIntent, PayoutRequest, WebhookLog
 from .services import WalletService
 
-# Import Ozow functions directly from the module
-from wallet.providers.ozow import build_hosted_payment_url, verify_webhook_signature
+from wallet.providers.ozow import (
+    post_payment_request_payload,
+    verify_webhook_signature,
+)
 
 
-# ------------------------ helpers ------------------------
 def _to_two_dp(value: Decimal) -> str:
     return f"{value.quantize(Decimal('0.01'))}"
 
 
 def _safe_bank_ref(seed: str) -> str:
-    """Ozow requires <=20 chars; alnum, spaces and dashes allowed."""
     base = ("VDL-" + re.sub(r"[^A-Za-z0-9]", "", seed))[:20]
     return base or "VDL-REF-1"
+
+
+def _ozow_base() -> str:
+    return "https://stagingapi.ozow.com" if getattr(settings, "OZOW_IS_TEST", True) else "https://api.ozow.com"
 
 
 # ------------------------ wallet overview ------------------------
@@ -78,35 +83,32 @@ class TransactionsView(APIView):
         return Response(data)
 
 
-# ------------------------ Ozow: start deposit ------------------------
+# ------------------------ Ozow: start deposit (Create Payment Request) ------------------------
 class OzowDepositStartView(APIView):
     """
     POST { amount: "50.00", intent_id?: "uuid" }
     -> { redirect_url, reference, intent_id }
-    
-    Can be used for:
-    1. Direct deposit (no intent_id) - creates new intent
-    2. Order payment (with intent_id from checkout)
+
+    Creates/uses a PaymentIntent, POSTs to Ozow /PostPaymentRequest,
+    stores paymentRequestId, and returns Ozow's redirect URL.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        # Validate amount
         raw_amount = str(request.data.get("amount", "")).strip()
-        intent_id = request.data.get("intent_id")  # Optional: for order payments
-        
+        intent_id = request.data.get("intent_id")
+
         if not raw_amount:
             return Response({"detail": "Amount is required."}, status=400)
-        
+
         try:
             amount = Decimal(raw_amount)
         except InvalidOperation:
             return Response({"detail": "Invalid amount."}, status=400)
-        
+
         if amount < Decimal("10.00"):
             return Response({"detail": "Minimum deposit is R 10.00"}, status=400)
 
-        # Validate settings
         required = {
             "OZOW_SITE_CODE": getattr(settings, "OZOW_SITE_CODE", None),
             "OZOW_API_KEY": getattr(settings, "OZOW_API_KEY", None),
@@ -116,27 +118,25 @@ class OzowDepositStartView(APIView):
             "OZOW_ERROR_URL": getattr(settings, "OZOW_ERROR_URL", None),
             "OZOW_NOTIFY_URL": getattr(settings, "OZOW_NOTIFY_URL", None),
         }
-        
-        missing = [k for k, v in required.items() if not v or v.startswith("PLACEHOLDER")]
+        missing = [k for k, v in required.items() if not v or str(v).startswith("PLACEHOLDER")]
         if missing:
             return Response(
-                {"detail": f"Server misconfiguration: {', '.join(missing)} not set. Please contact support."},
-                status=500
+                {"detail": f"Server misconfiguration: {', '.join(missing)} not set."},
+                status=500,
             )
 
-        # Get or create intent
         wallet, _ = Wallet.objects.get_or_create(user=request.user)
-        
+
         if intent_id:
-            # Use existing intent from checkout
             try:
                 intent = PaymentIntent.objects.get(id=intent_id, user=request.user)
                 if intent.status not in ["created", "pending"]:
                     return Response({"detail": "Intent already processed"}, status=400)
+                intent.amount = amount  # allow amount override if needed
+                intent.save(update_fields=["amount"])
             except PaymentIntent.DoesNotExist:
                 return Response({"detail": "Invalid intent_id"}, status=404)
         else:
-            # Create new intent for direct deposit
             intent = PaymentIntent.objects.create(
                 user=request.user,
                 wallet=wallet,
@@ -149,29 +149,82 @@ class OzowDepositStartView(APIView):
 
         tx_ref = str(intent.id)
         bank_ref = _safe_bank_ref(tx_ref)
-        is_test = getattr(settings, "OZOW_IS_TEST", not getattr(settings, "LIVE_MODE", False))
+
+        payload = post_payment_request_payload(
+            site_code=required["OZOW_SITE_CODE"],
+            api_key=required["OZOW_API_KEY"],
+            private_key=required["OZOW_PRIVATE_KEY"],
+            amount=_to_two_dp(intent.amount),
+            transaction_reference=tx_ref,
+            bank_reference=bank_ref,
+            cancel_url=required["OZOW_CANCEL_URL"],
+            error_url=required["OZOW_ERROR_URL"],
+            success_url=required["OZOW_SUCCESS_URL"],
+            notify_url=required["OZOW_NOTIFY_URL"],
+            is_test=getattr(settings, "OZOW_IS_TEST", True),
+            country_code="ZA",
+            currency_code="ZAR",
+            optional1=request.data.get("optional1", ""),
+            optional2=request.data.get("optional2", ""),
+            optional3=request.data.get("optional3", ""),
+            optional4=request.data.get("optional4", ""),
+            optional5=request.data.get("optional5", ""),
+            customer=request.user.email or "",
+            customer_identifier=request.data.get("customerIdentifier", ""),
+            customer_cellphone_number=request.data.get("customerCellphoneNumber", ""),
+            selected_bank_id=request.data.get("selectedBankId", ""),
+            allow_variable_amount=bool(request.data.get("allowVariableAmount", False)),
+            variable_amount_min=request.data.get("variableAmountMin"),
+            variable_amount_max=request.data.get("variableAmountMax"),
+        )
+
+        headers = {
+            "Accept": "application/json, application/xml",
+            "Content-Type": "application/json",
+            "ApiKey": required["OZOW_API_KEY"],
+        }
 
         try:
-            redirect_url, payment_request_id, payload = build_hosted_payment_url(
-                site_code=required["OZOW_SITE_CODE"],
-                api_key=required["OZOW_API_KEY"],
-                private_key=required["OZOW_PRIVATE_KEY"],
-                amount=_to_two_dp(intent.amount),
-                transaction_reference=tx_ref,
-                bank_reference=bank_ref,
-                success_url=required["OZOW_SUCCESS_URL"],
-                cancel_url=required["OZOW_CANCEL_URL"],
-                error_url=required["OZOW_ERROR_URL"],
-                notify_url=required["OZOW_NOTIFY_URL"],
-                customer=request.user.email or None,
-                is_test=is_test,
+            resp = requests.post(
+                f"{_ozow_base()}/PostPaymentRequest",
+                json=payload,
+                headers=headers,
+                timeout=30,
             )
-        except Exception as e:
+        except requests.RequestException as exc:
             intent.status = "failed"
             intent.save(update_fields=["status"])
-            return Response({"detail": f"Payment gateway error: {str(e)}"}, status=500)
+            return Response({"detail": "Failed to reach Ozow", "error": str(exc)}, status=502)
 
-        intent.provider_reference = payment_request_id
+        try:
+            data = resp.json()
+        except Exception:
+            intent.status = "failed"
+            intent.save(update_fields=["status"])
+            return Response(
+                {"detail": "Invalid Ozow response", "status": resp.status_code, "raw": resp.text},
+                status=502,
+            )
+
+        if resp.status_code >= 400:
+            intent.status = "failed"
+            intent.save(update_fields=["status"])
+            return Response(
+                {"detail": "Ozow declined request", "status": resp.status_code, "response": data},
+                status=502,
+            )
+
+        redirect_url = data.get("url")
+        payment_request_id = data.get("paymentRequestId")
+        if not redirect_url:
+            intent.status = "failed"
+            intent.save(update_fields=["status"])
+            return Response(
+                {"detail": data.get("errorMessage") or "Ozow did not return a URL", "response": data},
+                status=502,
+            )
+
+        intent.provider_reference = payment_request_id or intent.provider_reference or uuid.uuid4().hex
         intent.status = "pending"
         intent.save(update_fields=["provider_reference", "status"])
 
@@ -180,6 +233,7 @@ class OzowDepositStartView(APIView):
             "reference": tx_ref,
             "intent_id": str(intent.id),
             "amount": str(intent.amount),
+            "payment_request_id": intent.provider_reference,
         })
 
 
@@ -188,25 +242,18 @@ class OzowDepositStartView(APIView):
 @api_view(["POST", "GET"])
 @permission_classes([])
 def ozow_webhook(request):
-    """
-    Handle Ozow TransactionNotificationResponse
-    Supports both POST (form data) and GET (query params)
-    """
     raw = request.body.decode("utf-8") if request.body else ""
-    
-    # Try JSON first, then form data, then query params
+
     try:
         data = json.loads(raw) if raw else {}
     except Exception:
         data = {}
-    
-    # Merge POST data and GET params
+
     if request.method == "POST":
         data.update(request.POST.dict())
     else:
         data.update(request.GET.dict())
 
-    # Log everything
     webhook_log = WebhookLog.objects.create(
         provider="ozow",
         event_time=timezone.now(),
@@ -216,7 +263,6 @@ def ozow_webhook(request):
         status_code=200,
     )
 
-    # Extract keys (case-insensitive)
     reference = data.get("TransactionReference") or data.get("transactionReference") or ""
     status_text = (data.get("Status") or data.get("status") or "").strip().lower()
     amount_str = data.get("Amount") or data.get("amount") or "0"
@@ -227,7 +273,6 @@ def ozow_webhook(request):
         webhook_log.save(update_fields=["notes"])
         return Response({"detail": "Missing reference"}, status=200)
 
-    # Find intent
     try:
         intent = PaymentIntent.objects.select_related("user", "wallet").get(id=reference, provider="ozow")
     except (PaymentIntent.DoesNotExist, ValueError):
@@ -235,13 +280,11 @@ def ozow_webhook(request):
         webhook_log.save(update_fields=["notes"])
         return Response({"detail": "Unknown reference"}, status=200)
 
-    # Idempotency check
     if intent.status in ["succeeded", "failed", "cancelled"]:
         webhook_log.notes = f"Already processed as {intent.status}"
         webhook_log.save(update_fields=["notes"])
         return Response({"detail": "Already processed"}, status=200)
 
-    # Verify signature (optional but recommended)
     private_key = getattr(settings, "OZOW_PRIVATE_KEY", "")
     if private_key and not private_key.startswith("PLACEHOLDER"):
         if not verify_webhook_signature(data, private_key):
@@ -249,19 +292,14 @@ def ozow_webhook(request):
             webhook_log.save(update_fields=["notes"])
             return Response({"detail": "Invalid signature"}, status=400)
 
-    # Process based on status
     with db_transaction.atomic():
         if status_text == "complete":
-            # Check if this is an order payment or direct deposit
             order_id = intent.metadata.get("order_id") if intent.metadata else None
-            
+
             if order_id:
-                # Order payment - mark order as paid and hold in escrow
                 from main.models import Order
                 try:
                     order = Order.objects.get(id=order_id)
-                    
-                    # Hold funds in escrow (pending)
                     intent.wallet.pending = (intent.wallet.pending or Decimal("0")) + intent.amount
                     intent.wallet.save(update_fields=["pending"])
 
@@ -279,12 +317,11 @@ def ozow_webhook(request):
 
                     order.status = Order.Status.PAID
                     order.save(update_fields=["status"])
-                    
+
                     webhook_log.notes = f"Order #{order_id} marked as PAID, funds held in escrow"
                 except Order.DoesNotExist:
                     webhook_log.notes = f"Order #{order_id} not found"
             else:
-                # Direct deposit - credit wallet immediately
                 WalletService.post_credit(
                     user=intent.user,
                     amount=intent.amount,
@@ -294,7 +331,7 @@ def ozow_webhook(request):
                     idem=f"ozow-{reference}",
                 )
                 webhook_log.notes = f"Credited R {intent.amount} to wallet"
-            
+
             intent.status = "succeeded"
             intent.provider_reference = transaction_id or intent.provider_reference
             intent.save(update_fields=["status", "provider_reference"])
@@ -303,7 +340,6 @@ def ozow_webhook(request):
         elif status_text in ["cancelled", "error", "abandoned", "pending abandonment"]:
             intent.status = "failed"
             intent.save(update_fields=["status"])
-            
             webhook_log.notes = f"Payment failed: {status_text}"
             webhook_log.save(update_fields=["notes"])
 
@@ -317,15 +353,15 @@ class WithdrawRequestView(APIView):
     def post(self, request):
         amount_raw = str(request.data.get("amount", "")).strip()
         bank_account = request.data.get("bank_account", {})
-        
+
         if not amount_raw:
             return Response({"detail": "Amount is required."}, status=400)
-        
+
         try:
             amount = Decimal(amount_raw)
         except InvalidOperation:
             return Response({"detail": "Invalid amount."}, status=400)
-        
+
         min_payout = Decimal(getattr(settings, "PAYOUT_MIN_AMOUNT", "10.00"))
         if amount < min_payout:
             return Response({"detail": f"Minimum withdrawal is R {min_payout}"}, status=400)
@@ -334,7 +370,6 @@ class WithdrawRequestView(APIView):
         if (wallet.balance or Decimal("0")) < amount:
             return Response({"detail": "Insufficient balance."}, status=400)
 
-        # Extract bank details
         holder = bank_account.get("holder", "")
         bank_name = bank_account.get("bank_name", "")
         acc_no = bank_account.get("account_number", "")
@@ -358,7 +393,6 @@ class WithdrawRequestView(APIView):
                 status="pending",
             )
 
-            # Debit wallet immediately (freeze funds)
             WalletService.post_debit(
                 user=request.user,
                 amount=amount,
@@ -378,16 +412,14 @@ class WithdrawRequestView(APIView):
 
 # ------------------------ Vendor Profile endpoint for wallet ops ------------------------
 class MeVendorProfileView(APIView):
-    """Returns minimal vendor info needed for wallet UI"""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         wallet, _ = Wallet.objects.get_or_create(user=request.user)
-        
-        # Try to get vendor profile
+
         from main.models import VendorProfile
         vendor = VendorProfile.objects.filter(user=request.user).first()
-        
+
         return Response({
             "wallet_balance": str(wallet.balance),
             "wallet_pending": str(wallet.pending),

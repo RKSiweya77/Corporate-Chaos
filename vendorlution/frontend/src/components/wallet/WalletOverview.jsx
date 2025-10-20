@@ -1,4 +1,3 @@
-// src/components/wallet/WalletOverview.jsx
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/axios";
@@ -22,14 +21,12 @@ export default function WalletOverview() {
         setLoading(true);
         const w = await api.get(API_ENDPOINTS.wallet.me);
         const data = w.data || {};
-        
         setWallet({
           balance: Number(data.balance || 0),
           pending: Number(data.pending || 0),
           currency: data.currency || "ZAR",
           recent: Array.isArray(data.recent) ? data.recent : [],
         });
-
         if (Array.isArray(data.recent) && data.recent.length) {
           setRecent(data.recent);
         } else {
@@ -52,15 +49,31 @@ export default function WalletOverview() {
     else setLoading(false);
   }, [isAuthenticated]);
 
-  const totals = useMemo(() => {
-    const total = (wallet.balance || 0) + (wallet.pending || 0);
-    return { total };
-  }, [wallet]);
+  const totals = useMemo(() => ({ total: (wallet.balance || 0) + (wallet.pending || 0) }), [wallet]);
+  const isDark = useMemo(() => window.matchMedia?.("(prefers-color-scheme: dark)")?.matches, []);
+  const styles = (
+    <style>{`
+      .dock-surface { color: var(--text-0); }
+      :root { color-scheme: ${isDark ? "dark" : "light"}; }
+      .panel { border:1px solid var(--border-0); border-radius:14px; background:var(--surface-1); box-shadow:0 10px 30px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.04); }
+      .panel-header { padding:.85rem 1rem; border-bottom:1px solid var(--border-0); font-weight:700; }
+      .panel-body { padding:1rem; }
+      .metric { background:var(--surface-0); border:1px solid var(--border-0); border-radius:12px; padding:16px; }
+      .ghost { border:1px solid var(--border-0); background:var(--surface-1); color:var(--text-0); }
+      .ghost:hover { background:color-mix(in oklab, var(--primary-500) 12%, var(--surface-1)); }
+    `}</style>
+  );
 
   if (!isAuthenticated) {
     return (
-      <div className="container py-5">
-        <div className="alert alert-info">Please sign in to view your wallet.</div>
+      <div className="container py-5 dock-surface">
+        {styles}
+        <div className="panel">
+          <div className="panel-header">Wallet</div>
+          <div className="panel-body">
+            <div className="alert alert-info mb-0">Please sign in to view your wallet.</div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -68,77 +81,71 @@ export default function WalletOverview() {
   if (loading) return <LoadingSpinner fullPage />;
 
   return (
-    <div className="container py-5">
-      {err && (
+    <div className="container py-4 dock-surface">
+      {styles}
+      {err ? (
         <div className="alert alert-danger d-flex justify-content-between align-items-center">
           <span>{err}</span>
-          <button className="btn-close" onClick={() => setErr("")} />
+          <button type="button" className="btn-close" onClick={() => setErr("")} />
         </div>
-      )}
+      ) : null}
 
       <div className="row g-3 mb-4">
         <div className="col-md-4">
-          <div className="card h-100 border-0 shadow-sm">
-            <div className="card-body">
+          <div className="panel h-100">
+            <div className="panel-body d-flex flex-column">
               <div className="text-muted small">Available Balance</div>
               <div className="fs-3 fw-bold text-success">{ZAR(wallet.balance)}</div>
-            </div>
-            <div className="card-footer bg-transparent">
-              <Link to="/wallet/deposit" className="btn btn-dark w-100">
-                <i className="fa fa-arrow-down me-2" />
-                Deposit
-              </Link>
+              <div className="mt-auto">
+                <Link to="/wallet/deposit" className="btn btn-dark w-100">
+                  <i className="fa fa-arrow-down me-2" />
+                  Deposit
+                </Link>
+              </div>
             </div>
           </div>
         </div>
-
         <div className="col-md-4">
-          <div className="card h-100 border-0 shadow-sm">
-            <div className="card-body">
+          <div className="panel h-100">
+            <div className="panel-body d-flex flex-column">
               <div className="text-muted small">In Escrow (Pending)</div>
               <div className="fs-3 fw-bold text-warning">{ZAR(wallet.pending)}</div>
-            </div>
-            <div className="card-footer bg-transparent">
-              <Link to="/customer/orders" className="btn btn-outline-dark w-100">
-                View Orders
-              </Link>
+              <div className="mt-auto">
+                <Link to="/customer/orders" className="btn ghost w-100">
+                  View Orders
+                </Link>
+              </div>
             </div>
           </div>
         </div>
-
         <div className="col-md-4">
-          <div className="card h-100 border-0 shadow-sm">
-            <div className="card-body">
-              <div className="text-muted small">Total Funds (Balance + Escrow)</div>
+          <div className="panel h-100">
+            <div className="panel-body d-flex flex-column">
+              <div className="text-muted small">Total Funds</div>
               <div className="fs-3 fw-bold text-primary">{ZAR(totals.total)}</div>
-            </div>
-            <div className="card-footer bg-transparent">
-              <Link to="/wallet/withdraw" className="btn btn-outline-dark w-100">
-                <i className="fa fa-arrow-up me-2" />
-                Withdraw
-              </Link>
+              <div className="mt-auto">
+                <Link to="/wallet/withdraw" className="btn ghost w-100">
+                  <i className="fa fa-arrow-up me-2" />
+                  Withdraw
+                </Link>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="card border-0 shadow-sm">
-        <div className="card-header d-flex align-items-center justify-content-between bg-white">
-          <span className="fw-bold">Recent Transactions</span>
-          <Link to="/wallet/transactions" className="btn btn-sm btn-outline-dark">
-            View all
-          </Link>
+      <div className="panel">
+        <div className="panel-header d-flex align-items-center justify-content-between">
+          <span>Recent Transactions</span>
+          <Link to="/wallet/transactions" className="btn btn-sm ghost">View all</Link>
         </div>
-        <div className="card-body">
+        <div className="panel-body">
           {recent.length === 0 ? (
-            <EmptyState 
-              title="No transactions yet" 
-              subtitle="Your wallet activity will show here." 
-            />
+            <EmptyState title="No transactions yet" subtitle="Your wallet activity will appear here." />
           ) : (
             <div className="table-responsive">
-              <table className="table align-middle">
-                <thead className="table-light">
+              <table className="table align-middle mb-0">
+                <thead>
                   <tr>
                     <th>Date</th>
                     <th>Description</th>
@@ -150,14 +157,15 @@ export default function WalletOverview() {
                 <tbody>
                   {recent.map((t) => {
                     const amt = Number(t.amount || 0);
-                    const isCredit = (t.entry_type || t.type || "").toLowerCase().includes("credit");
+                    const type = (t.entry_type || t.type || "").toLowerCase();
+                    const creditLike = type.includes("credit") || type.includes("release");
                     return (
                       <tr key={t.id}>
                         <td>{new Date(t.created_at).toLocaleDateString()}</td>
-                        <td>{t.description || (isCredit ? "Credit" : "Debit")}</td>
+                        <td>{t.description || (creditLike ? "Credit" : "Debit")}</td>
                         <td><code>{t.reference || "-"}</code></td>
-                        <td className={`text-end fw-bold ${isCredit ? "text-success" : "text-danger"}`}>
-                          {isCredit ? "+" : "-"}{ZAR(Math.abs(amt))}
+                        <td className={`text-end fw-bold ${creditLike ? "text-success" : "text-danger"}`}>
+                          {creditLike ? "+" : "-"}{ZAR(Math.abs(amt))}
                         </td>
                         <td className="text-end fw-medium">{ZAR(t.balance_after || 0)}</td>
                       </tr>
@@ -169,6 +177,7 @@ export default function WalletOverview() {
           )}
         </div>
       </div>
+      <div style={{ height: 96 }} />
     </div>
   );
 }

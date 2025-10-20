@@ -1,5 +1,4 @@
-// src/components/wallet/Withdraw.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../../api/axios";
 import API_ENDPOINTS from "../../api/endpoints";
 import LoadingSpinner from "../shared/LoadingSpinner";
@@ -47,7 +46,7 @@ export default function Withdraw() {
     e.preventDefault();
     setErr("");
     setOk("");
-    
+
     const amount = Number(form.amount);
     if (!amount || amount < 10) {
       setErr("Minimum withdrawal amount is R 10.00");
@@ -72,15 +71,7 @@ export default function Withdraw() {
       setSubmitting(true);
       const res = await api.post(API_ENDPOINTS.wallet.withdraw, payload);
       setOk(`Withdrawal requested. Reference: ${res.data?.id || res.data?.reference || "N/A"}`);
-      setForm({
-        amount: "",
-        holder: "",
-        bank_name: "",
-        account_number: "",
-        branch_code: "",
-      });
-      
-      // Refresh wallet balance
+      setForm({ amount: "", holder: "", bank_name: "", account_number: "", branch_code: "" });
       const w = await api.get(API_ENDPOINTS.wallet.me);
       setWallet({ balance: Number(w.data?.balance || 0) });
     } catch (e2) {
@@ -91,10 +82,28 @@ export default function Withdraw() {
     }
   }
 
+  const isDark = useMemo(() => window.matchMedia?.("(prefers-color-scheme: dark)")?.matches, []);
+  const styles = (
+    <style>{`
+      .dock-surface { color: var(--text-0); }
+      :root { color-scheme: ${isDark ? "dark" : "light"}; }
+      .panel { border:1px solid var(--border-0); border-radius:14px; background:var(--surface-1); box-shadow:0 10px 30px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.04); }
+      .panel-header { padding:.85rem 1rem; border-bottom:1px solid var(--border-0); font-weight:700; }
+      .panel-body { padding:1rem; }
+      .metric { background:var(--surface-0); border:1px dashed var(--border-0); border-radius:12px; padding:12px; }
+    `}</style>
+  );
+
   if (!isAuthenticated) {
     return (
-      <div className="container py-5">
-        <div className="alert alert-info">Please sign in to withdraw funds.</div>
+      <div className="container py-5 dock-surface">
+        {styles}
+        <div className="panel">
+          <div className="panel-header">Withdraw Funds</div>
+          <div className="panel-body">
+            <div className="alert alert-info mb-0">Please sign in to withdraw funds.</div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -102,30 +111,29 @@ export default function Withdraw() {
   if (loading) return <LoadingSpinner fullPage />;
 
   return (
-    <div className="container py-5">
-      {err && (
+    <div className="container py-4 dock-surface">
+      {styles}
+      {err ? (
         <div className="alert alert-danger d-flex justify-content-between align-items-center">
           <span>{err}</span>
-          <button className="btn-close" onClick={() => setErr("")} />
+          <button type="button" className="btn-close" onClick={() => setErr("")} />
         </div>
-      )}
-      {ok && (
+      ) : null}
+      {ok ? (
         <div className="alert alert-success d-flex justify-content-between align-items-center">
           <span>{ok}</span>
-          <button className="btn-close" onClick={() => setOk("")} />
+          <button type="button" className="btn-close" onClick={() => setOk("")} />
         </div>
-      )}
-
+      ) : null}
       <div className="row justify-content-center">
         <div className="col-lg-7">
-          <div className="card border-0 shadow-sm">
-            <div className="card-header fw-500 bg-white">Withdraw Funds</div>
-            <div className="card-body">
-              <div className="mb-4 p-3 bg-light rounded">
+          <div className="panel">
+            <div className="panel-header">Withdraw Funds</div>
+            <div className="panel-body">
+              <div className="metric mb-4">
                 <div className="text-muted">Available Balance</div>
                 <div className="fs-4 fw-bold text-success">{ZAR(wallet.balance)}</div>
               </div>
-
               <form onSubmit={submit}>
                 <div className="mb-3">
                   <label className="form-label">Amount (ZAR)</label>
@@ -142,50 +150,24 @@ export default function Withdraw() {
                   />
                   <div className="form-text">Minimum withdrawal R 10.00</div>
                 </div>
-
                 <div className="row g-3">
                   <div className="col-md-6">
                     <label className="form-label">Account Holder</label>
-                    <input
-                      className="form-control"
-                      name="holder"
-                      value={form.holder}
-                      onChange={onChange}
-                      required
-                    />
+                    <input className="form-control" name="holder" value={form.holder} onChange={onChange} required />
                   </div>
                   <div className="col-md-6">
                     <label className="form-label">Bank Name</label>
-                    <input
-                      className="form-control"
-                      name="bank_name"
-                      value={form.bank_name}
-                      onChange={onChange}
-                      required
-                    />
+                    <input className="form-control" name="bank_name" value={form.bank_name} onChange={onChange} required />
                   </div>
                   <div className="col-md-6">
                     <label className="form-label">Account Number</label>
-                    <input
-                      className="form-control"
-                      name="account_number"
-                      value={form.account_number}
-                      onChange={onChange}
-                      required
-                    />
+                    <input className="form-control" name="account_number" value={form.account_number} onChange={onChange} required />
                   </div>
                   <div className="col-md-6">
                     <label className="form-label">Branch Code</label>
-                    <input
-                      className="form-control"
-                      name="branch_code"
-                      value={form.branch_code}
-                      onChange={onChange}
-                      required
-                    />
+                    <input className="form-control" name="branch_code" value={form.branch_code} onChange={onChange} required />
                   </div>
                 </div>
-
                 <button className="btn btn-dark w-100 mt-4 py-2" disabled={submitting}>
                   {submitting ? (
                     <>
@@ -199,10 +181,10 @@ export default function Withdraw() {
               </form>
             </div>
           </div>
-
           {submitting && <LoadingSpinner />}
         </div>
       </div>
+      <div style={{ height: 96 }} />
     </div>
   );
 }
