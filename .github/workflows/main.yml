@@ -15,7 +15,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: "Phraser18$"
-          POSTGRES_DB: vendorlution 
+          POSTGRES_DB: vendorlution
         ports:
           - 5432:5432
         options: >-
@@ -23,6 +23,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
     defaults:
       run:
         working-directory: ./vendorlution/backend
@@ -59,6 +60,9 @@ jobs:
 
       - name: Reset database
         run: |
+          # Terminate any existing connections
+          PGPASSWORD="Phraser18$" psql -h localhost -U postgres -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='vendorlution';"
+          # Drop and recreate database
           PGPASSWORD="Phraser18$" psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS vendorlution;"
           PGPASSWORD="Phraser18$" psql -h localhost -U postgres -c "CREATE DATABASE vendorlution;"
 
