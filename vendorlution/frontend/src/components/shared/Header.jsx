@@ -144,7 +144,7 @@ export default function Header() {
       { label: "Vendors",    icon: "fa-store",            onClick: () => navigate("/vendors") },
       { label: "Categories", icon: "fa-tags",             onClick: () => navigate("/categories") },
       { label: "Search",     icon: "fa-magnifying-glass", onClick: () => navigate("/search") },
-      { label: "Wishlist",   icon: "fa-heart",            onClick: () => navigate("/wishlist") },
+      { label: "Favourites",   icon: "fa-heart",            onClick: () => navigate("/wishlist") },
       { label: "Chat",       icon: "fa-comments",         onClick: () => navigate("/chat") },
       {
         label: "Cart",
@@ -161,7 +161,7 @@ export default function Header() {
     ];
 
     const shop = isVendor
-      ? [{ label: "Vendor", icon: "fa-shop", onClick: () => navigate("/vendor/dashboard") }]
+      ? [{ label: "My Shop", icon: "fa-shop", onClick: () => navigate("/vendor/dashboard") }]
       : [{ label: "Open Shop", icon: "fa-plus", onClick: () => navigate("/vendor/create-shop") }];
 
     const account = isAuthenticated
@@ -180,7 +180,7 @@ export default function Header() {
   return (
     <>
       <style>{`
-        /* -------- Theme variables (dark default) -------- */
+       
         :root {
           --surface-0: #060010;
           --surface-1: #0b0614;

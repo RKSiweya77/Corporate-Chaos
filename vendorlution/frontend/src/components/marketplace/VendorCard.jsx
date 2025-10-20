@@ -62,7 +62,7 @@ export default function VendorCard({ vendor }) {
       `}</style>
 
       <div className="vcard h-100">
-        {/* Logo only (no banner) */}
+        {/* Logo only  */}
         <div className="vlogo-wrap">
           {logo ? (
             <img src={logo} alt={name} className="vlogo" />

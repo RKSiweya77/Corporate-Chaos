@@ -226,7 +226,7 @@ export default function VendorStore() {
     window.location.assign(`/chat/vendor/${vendorId}`);
   }, [isAuthenticated, vendorId, addNotification]);
 
-  /* -------------------- Styles (dock theme) -------------------- */
+ 
   const styles = (
     <style>{`
       .store-wrap { color: var(--text-0); }

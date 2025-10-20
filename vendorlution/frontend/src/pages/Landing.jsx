@@ -87,7 +87,7 @@ export default function Landing() {
           --btn-outline-border: #2b2444;
           --btn-outline-hover: #16102a;
         }
-        /* Honor global theme (data-theme="light" or .light anywhere up the tree) */
+        
         :where([data-theme="light"], html[data-theme="light"], body[data-theme="light"], html.light, body.light, .light) .landing-theme {
           --bg: #f5f7fb;
           --bg-soft: #ffffff;

@@ -143,7 +143,7 @@ export default function ProductCard({ product }) {
           {/* SOLD */}
           {isSold && <span className="sold">SOLD</span>}
 
-          {/* Hover “Add to Cart” (text only) */}
+          {/* Hover “Add to Cart”  */}
           {!isSold && inStock && (
             <div className="addbar">
               <button

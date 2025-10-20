@@ -1,278 +1,429 @@
-import { useEffect, useState } from "react";
+// src/components/buyer/Wishlist.jsx
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/axios";
 import API_ENDPOINTS from "../../api/endpoints";
 import { useNotifications } from "../../context/NotificationsContext";
+import { useAuth } from "../../context/AuthContext";
 import { toMedia } from "../../utils/media";
 
-export default function Wishlist() {
-  const [wishlist, setWishlist] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function Favorites() {
+  const { isAuthenticated } = useAuth();
   const { addNotification } = useNotifications();
 
-  const loadWishlist = async () => {
+  const [loading, setLoading] = useState(true);
+  const [productFavs, setProductFavs] = useState([]);
+  const [vendorFavs, setVendorFavs] = useState([]);
+  const [err, setErr] = useState("");
+
+  const loadFavorites = useCallback(async () => {
+    setLoading(true);
+    setErr("");
     try {
-      setLoading(true);
-      const response = await api.get(API_ENDPOINTS.wishlist.list);
-      const wishlistData = response.data?.results || response.data || [];
-      setWishlist(wishlistData);
-    } catch (error) {
-      console.error("Failed to load wishlist:", error);
-      addNotification("Failed to load wishlist", "error");
+      // ---------- PRODUCTS ----------
+      let products = [];
+      try {
+        const r = await api.get(
+          API_ENDPOINTS?.wishlist?.list ||
+            API_ENDPOINTS?.favorites?.products?.list ||
+            API_ENDPOINTS?.favorites?.products
+        );
+        products = Array.isArray(r.data) ? r.data : r.data?.results || [];
+      } catch {
+        products = [];
+      }
+
+      // Normalize product items
+      const normalizedProducts = products.map((it) => {
+        const p = it.product || it;
+        return {
+          favId: it.id ?? p.id,
+          productId: p.id ?? it.product_id,
+          title: p.title || p.name || "Product",
+          price: p.price || 0,
+          image: p.main_image || p.image,
+          slug: p.slug,
+          inStock: (p.stock_quantity ?? 0) > 0,
+          vendor: p.vendor,
+        };
+      });
+
+      // ---------- VENDORS ----------
+      let vendors = [];
+      const vendorAttempts = [
+        async () => API_ENDPOINTS?.vendors?.favorites && api.get(API_ENDPOINTS.vendors.favorites),
+        async () => API_ENDPOINTS?.favorites?.vendors?.list && api.get(API_ENDPOINTS.favorites.vendors.list),
+        async () => API_ENDPOINTS?.favorites?.vendors && api.get(API_ENDPOINTS.favorites.vendors),
+        async () => API_ENDPOINTS?.vendors?.following && api.get(API_ENDPOINTS.vendors.following),
+      ];
+      for (const call of vendorAttempts) {
+        try {
+          const r = await call?.();
+          if (r) {
+            vendors = Array.isArray(r.data) ? r.data : r.data?.results || [];
+            break;
+          }
+        } catch {
+          /* try next */
+        }
+      }
+
+      // Normalize vendor items
+      const normalizedVendors = vendors.map((v) => {
+        const vendor = v.vendor || v;
+        return {
+          favId: v.id ?? vendor.id,
+          id: vendor.id,
+          name: vendor.shop_name || vendor.name || "Vendor",
+          logo: vendor.logo,
+          banner: vendor.banner,
+          rating: vendor.rating_avg ?? vendor.rating ?? null,
+          productCount: vendor.product_count ?? vendor.products_count ?? null,
+          verified: vendor.is_verified || vendor.verified,
+          location: vendor.location || vendor.city || vendor.country || "",
+        };
+      });
+
+      setProductFavs(normalizedProducts);
+      setVendorFavs(normalizedVendors);
+    } catch (e) {
+      setErr(e?.message || "Failed to load favourites.");
+      addNotification("Failed to load favourites", "error");
     } finally {
       setLoading(false);
     }
-  };
+  }, [addNotification]);
 
   useEffect(() => {
-    loadWishlist();
-  }, []);
+    loadFavorites();
+  }, [loadFavorites]);
 
-  const removeFromWishlist = async (itemId) => {
+  const formatZAR = (amount) =>
+    new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(Number(amount || 0));
+
+  const removeProductFav = async (favId) => {
     try {
-      await api.delete(API_ENDPOINTS.wishlist.remove(itemId));
-      await loadWishlist();
-      addNotification("Item removed from wishlist", "success");
-    } catch (error) {
-      console.error("Failed to remove item:", error);
-      addNotification("Failed to remove item from wishlist", "error");
+      if (API_ENDPOINTS?.wishlist?.remove) {
+        await api.delete(API_ENDPOINTS.wishlist.remove(favId));
+      } else if (API_ENDPOINTS?.favorites?.products?.remove) {
+        await api.delete(API_ENDPOINTS.favorites.products.remove(favId));
+      } else if (API_ENDPOINTS?.favorites?.remove) {
+        await api.delete(API_ENDPOINTS.favorites.remove(favId));
+      }
+      addNotification("Removed from favourites", "success");
+      loadFavorites();
+    } catch {
+      addNotification("Failed to remove favourite", "error");
     }
   };
 
-  const addToCart = async (product) => {
+  const removeVendorFav = async (favId) => {
     try {
-      await api.post(API_ENDPOINTS.cart.addItem, {
-        product_id: product.id || product.product_id,
-        quantity: 1,
-      });
+      if (API_ENDPOINTS?.vendors?.favoritesRemove) {
+        await api.delete(API_ENDPOINTS.vendors.favoritesRemove(favId));
+      } else if (API_ENDPOINTS?.favorites?.vendors?.remove) {
+        await api.delete(API_ENDPOINTS.favorites.vendors.remove(favId));
+      } else if (API_ENDPOINTS?.vendors?.unfollow) {
+        await api.post(API_ENDPOINTS.vendors.unfollow, { id: favId });
+      }
+      addNotification("Vendor removed from favourites", "success");
+      loadFavorites();
+    } catch {
+      addNotification("Failed to remove vendor", "error");
+    }
+  };
+
+  const addToCart = async (productId) => {
+    try {
+      await api.post(API_ENDPOINTS.cart.addItem, { product_id: productId, quantity: 1 });
       addNotification("Product added to cart", "success");
     } catch (error) {
-      console.error("Failed to add to cart:", error);
       const message = error?.response?.data?.detail || "Failed to add to cart";
       addNotification(message, "error");
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-ZA', {
-      style: 'currency',
-      currency: 'ZAR'
-    }).format(Number(amount || 0));
+  const startChatWithVendor = async (vendorId) => {
+    if (!isAuthenticated) {
+      addNotification("Sign in to chat with vendors.", "info");
+      window.location.assign(`/login?next=/vendors/${vendorId}`);
+      return;
+    }
+    const attempts = [
+      async () => API_ENDPOINTS?.messages?.withVendor && api.post(API_ENDPOINTS.messages.withVendor(vendorId)),
+      async () => API_ENDPOINTS?.messages?.start && api.post(API_ENDPOINTS.messages.start, { vendor_id: vendorId }),
+      async () => API_ENDPOINTS?.messages?.create && api.post(API_ENDPOINTS.messages.create, { vendor: vendorId }),
+    ];
+    for (const call of attempts) {
+      try {
+        const r = await call?.();
+        const convoId = r?.data?.id || r?.data?.conversation_id || r?.data?.conversation?.id;
+        if (convoId) {
+          window.location.assign(`/chat/${convoId}`);
+          return;
+        }
+      } catch {
+        /* try next */
+      }
+    }
+    window.location.assign(`/chat/vendor/${vendorId}`);
   };
 
-  if (loading) {
-    return (
-      <div className="container py-5">
-        <div className="text-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-          <p className="text-muted mt-3">Loading your wishlist...</p>
-        </div>
-      </div>
-    );
-  }
+  const counts = useMemo(
+    () => ({
+      products: productFavs.length,
+      vendors: vendorFavs.length,
+    }),
+    [productFavs.length, vendorFavs.length]
+  );
 
   return (
     <div className="container py-4">
-      {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="fw-bold text-dark mb-0">
-          <i className="fas fa-heart me-2 text-danger"></i>
-          My Wishlist
-        </h1>
-        <div className="text-muted">
-          {wishlist.length} item{wishlist.length !== 1 ? 's' : ''}
-        </div>
-      </div>
+      <style>{`
+        .fav-title { color: var(--text-0); }
+        .muted { color: var(--text-1); }
+        .panel {
+          border: 1px solid var(--border-0);
+          border-radius: 14px;
+          background: var(--surface-1);
+          box-shadow: 0 10px 30px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.04);
+        }
+        .panel-hd {
+          display:flex; align-items:center; justify-content:space-between;
+          padding:.85rem 1rem; border-bottom:1px solid var(--border-0); color: var(--text-0);
+        }
+        .panel-body { padding: 1rem; }
+        .product-card, .vendor-card {
+          background: var(--surface-0);
+          border: 1px solid var(--border-0);
+          border-radius: 12px;
+          overflow: hidden;
+        }
+        .chip {
+          display:inline-flex; align-items:center; gap:.35rem;
+          padding:.25rem .5rem; font-size:.8rem; border-radius:999px;
+          border:1px solid var(--border-0); background: var(--surface-1); color: var(--text-0);
+        }
+        .btn-ghost {
+          border:1px solid var(--border-0);
+          background: var(--surface-1);
+          color: var(--text-0);
+          border-radius: 10px;
+        }
+        .btn-ghost:hover { background: color-mix(in oklab, var(--primary-500) 12%, var(--surface-1)); }
+      `}</style>
 
-      {wishlist.length === 0 ? (
-        <div className="card border-0 shadow-sm text-center py-5">
-          <div className="card-body">
-            <i className="fas fa-heart fa-3x text-muted mb-3"></i>
-            <h4 className="text-muted mb-3">Your wishlist is empty</h4>
-            <p className="text-muted mb-4">Save items you love for later</p>
-            <Link to="/marketplace" className="btn btn-dark btn-lg">
-              <i className="fas fa-store me-2"></i>
-              Browse Products
-            </Link>
-          </div>
+      {loading ? (
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" role="status" />
+          <p className="muted mt-3">Loading your favourites…</p>
         </div>
+      ) : err ? (
+        <div className="alert alert-danger">{err}</div>
       ) : (
         <>
-          {/* Wishlist Grid */}
-          <div className="row g-4">
-            {wishlist.map((item) => {
-              const product = item.product || {};
-              const title = product.title || product.name || "Product";
-              const price = product.price || 0;
-              const image = product.main_image || product.image;
-              const productId = product.id || item.product_id;
-              const slug = product.slug;
-              const inStock = (product.stock_quantity || 0) > 0;
-
-              return (
-                <div className="col-6 col-md-4 col-lg-3" key={item.id}>
-                  <div className="card h-100 border-0 shadow-sm">
-                    {/* Product Image */}
-                    <div className="position-relative">
-                      {image ? (
-                        <img
-                          src={toMedia(image)}
-                          alt={title}
-                          className="card-img-top"
-                          style={{ height: '200px', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <div 
-                          className="bg-light d-flex align-items-center justify-content-center"
-                          style={{ height: '200px' }}
-                        >
-                          <i className="fas fa-image fa-2x text-muted"></i>
-                        </div>
-                      )}
-                      
-                      {/* Out of Stock Badge */}
-                      {!inStock && (
-                        <div className="position-absolute top-0 start-0 m-2">
-                          <span className="badge bg-danger">Out of Stock</span>
-                        </div>
-                      )}
-                      
-                      {/* Remove Button */}
-                      <button
-                        className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
-                        onClick={() => removeFromWishlist(item.id)}
-                        title="Remove from wishlist"
-                      >
-                        <i className="fas fa-times"></i>
-                      </button>
-                    </div>
-
-                    <div className="card-body d-flex flex-column">
-                      {/* Product Title */}
-                      <Link 
-                        to={`/product/${slug || productId}`}
-                        className="text-decoration-none text-dark"
-                      >
-                        <h6 className="card-title fw-semibold text-truncate">
-                          {title}
-                        </h6>
-                      </Link>
-
-                      {/* Price */}
-                      <div className="fw-bold text-primary mb-3">
-                        {formatCurrency(price)}
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="mt-auto d-flex gap-2">
-                        <Link 
-                          to={`/product/${slug || productId}`}
-                          className="btn btn-outline-dark btn-sm flex-fill"
-                        >
-                          <i className="fas fa-eye me-1"></i>
-                          View
-                        </Link>
-                        <button
-                          className="btn btn-dark btn-sm flex-fill"
-                          onClick={() => addToCart(product)}
-                          disabled={!inStock}
-                          title={!inStock ? "Out of stock" : "Add to cart"}
-                        >
-                          <i className="fas fa-cart-plus me-1"></i>
-                          Add
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Vendor Info */}
-                    {product.vendor && (
-                      <div className="card-footer bg-transparent border-top-0 pt-0">
-                        <small className="text-muted">
-                          By {product.vendor.shop_name || product.vendor.name}
-                        </small>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Wishlist Actions */}
-          <div className="row mt-4">
-            <div className="col-12">
-              <div className="card border-0 shadow-sm">
-                <div className="card-body text-center">
-                  <h6 className="fw-semibold mb-3">Wishlist Actions</h6>
-                  <div className="d-flex gap-3 justify-content-center flex-wrap">
-                    <button 
-                      className="btn btn-outline-danger"
-                      onClick={() => {
-                        if (window.confirm("Are you sure you want to clear your entire wishlist?")) {
-                          // Implement bulk remove if backend supports it
-                          addNotification("Bulk remove not yet implemented", "info");
-                        }
-                      }}
-                    >
-                      <i className="fas fa-trash me-2"></i>
-                      Clear All
-                    </button>
-                    <Link to="/marketplace" className="btn btn-dark">
-                      <i className="fas fa-plus me-2"></i>
-                      Add More Items
-                    </Link>
-                    <Link to="/cart" className="btn btn-outline-dark">
-                      <i className="fas fa-shopping-cart me-2"></i>
-                      View Cart
-                    </Link>
-                  </div>
-                </div>
-              </div>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h1 className="fw-bold fav-title mb-0">
+              <i className="fa fa-heart me-2 text-danger" />
+              Favourites
+            </h1>
+            <div className="muted">
+              {counts.products} product{counts.products === 1 ? "" : "s"} • {counts.vendors} vendor
+              {counts.vendors === 1 ? "" : "s"}
             </div>
           </div>
 
-          {/* Quick Stats */}
-          <div className="row mt-4">
-            <div className="col-12">
-              <div className="card border-0 shadow-sm">
-                <div className="card-body">
-                  <h6 className="fw-semibold mb-3">
-                    <i className="fas fa-chart-bar me-2"></i>
-                    Wishlist Stats
-                  </h6>
-                  <div className="row text-center">
-                    <div className="col-md-3 col-6 mb-3">
-                      <div className="text-primary fw-bold fs-4">{wishlist.length}</div>
-                      <small className="text-muted">Total Items</small>
-                    </div>
-                    <div className="col-md-3 col-6 mb-3">
-                      <div className="text-success fw-bold fs-4">
-                        {wishlist.filter(item => (item.product?.stock_quantity || 0) > 0).length}
-                      </div>
-                      <small className="text-muted">In Stock</small>
-                    </div>
-                    <div className="col-md-3 col-6 mb-3">
-                      <div className="text-warning fw-bold fs-4">
-                        {wishlist.filter(item => {
-                          const price = item.product?.price || 0;
-                          return price > 0 && price < 100;
-                        }).length}
-                      </div>
-                      <small className="text-muted">Under R100</small>
-                    </div>
-                    <div className="col-md-3 col-6 mb-3">
-                      <div className="text-info fw-bold fs-4">
-                        {wishlist.filter(item => item.product?.vendor).length}
-                      </div>
-                      <small className="text-muted">From Vendors</small>
-                    </div>
+          {/* PRODUCTS PANEL */}
+          <div className="panel mb-4">
+            <div className="panel-hd">
+              <h5 className="mb-0 fw-bold">Products</h5>
+              <div className="muted">{counts.products}</div>
+            </div>
+            <div className="panel-body">
+              {productFavs.length === 0 ? (
+                <div className="text-center py-4 muted">
+                  <i className="fa fa-box-open fa-2x mb-2" />
+                  <div>No favourite products yet.</div>
+                  <div className="mt-2">
+                    <Link to="/products" className="btn btn-ghost">
+                      <i className="fa fa-store me-2" />
+                      Browse Products
+                    </Link>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="row g-3">
+                  {productFavs.map((p) => (
+                    <div className="col-6 col-md-4 col-lg-3" key={`pf-${p.favId}`}>
+                      <div className="product-card h-100 d-flex flex-column">
+                        <div className="position-relative">
+                          {p.image ? (
+                            <img
+                              src={toMedia(p.image)}
+                              alt={p.title}
+                              className="w-100"
+                              style={{ height: 190, objectFit: "cover" }}
+                            />
+                          ) : (
+                            <div
+                              className="d-flex align-items-center justify-content-center"
+                              style={{ height: 190 }}
+                            >
+                              <i className="fa fa-image fa-2x muted" />
+                            </div>
+                          )}
+                          {!p.inStock && (
+                            <span className="badge bg-danger position-absolute top-0 start-0 m-2">
+                              Out of Stock
+                            </span>
+                          )}
+                          <button
+                            className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
+                            onClick={() => removeProductFav(p.favId)}
+                            title="Remove"
+                          >
+                            <i className="fa fa-times" />
+                          </button>
+                        </div>
+
+                        <div className="p-2 d-flex flex-column flex-grow-1">
+                          <Link
+                            to={`/product/${p.slug || p.productId}`}
+                            className="text-decoration-none"
+                            style={{ color: "var(--text-0)" }}
+                          >
+                            <div className="fw-semibold text-truncate">{p.title}</div>
+                          </Link>
+                          <div className="fw-bold text-primary mb-2">{formatZAR(p.price)}</div>
+                          <div className="mt-auto d-flex gap-2">
+                            <Link
+                              to={`/product/${p.slug || p.productId}`}
+                              className="btn btn-outline-secondary btn-sm flex-fill"
+                            >
+                              <i className="fa fa-eye me-1" />
+                              View
+                            </Link>
+                            <button
+                              className="btn btn-primary btn-sm flex-fill"
+                              onClick={() => addToCart(p.productId)}
+                              disabled={!p.inStock}
+                              title={!p.inStock ? "Out of stock" : "Add to cart"}
+                            >
+                              <i className="fa fa-cart-plus me-1" />
+                              Add
+                            </button>
+                          </div>
+                        </div>
+
+                        {p.vendor && (
+                          <div className="px-2 pb-2">
+                            <small className="muted">
+                              By {p.vendor.shop_name || p.vendor.name}
+                            </small>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
+
+          {/* VENDORS PANEL */}
+          <div className="panel">
+            <div className="panel-hd">
+              <h5 className="mb-0 fw-bold">Vendors</h5>
+              <div className="muted">{counts.vendors}</div>
+            </div>
+            <div className="panel-body">
+              {vendorFavs.length === 0 ? (
+                <div className="text-center py-4 muted">
+                  <i className="fa fa-store fa-2x mb-2" />
+                  <div>No favourite vendors yet.</div>
+                  <div className="mt-2">
+                    <Link to="/vendors" className="btn btn-ghost">
+                      <i className="fa fa-compass me-2" />
+                      Explore Vendors
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="row g-3">
+                  {vendorFavs.map((v) => (
+                    <div className="col-12 col-md-6" key={`vf-${v.favId}`}>
+                      <div className="vendor-card d-flex">
+                        <div style={{ width: 96, height: 96 }} className="p-2">
+                          <div
+                            className="rounded-circle overflow-hidden w-100 h-100 d-flex align-items-center justify-content-center"
+                            style={{ background: "var(--surface-1)", border: "1px solid var(--border-0)" }}
+                          >
+                            {v.logo ? (
+                              <img
+                                src={toMedia(v.logo)}
+                                alt={v.name}
+                                className="w-100 h-100"
+                                style={{ objectFit: "cover" }}
+                              />
+                            ) : (
+                              <i className="fa fa-store muted" />
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex-grow-1 p-2">
+                          <div className="d-flex align-items-center gap-2">
+                            <Link
+                              to={`/vendors/${v.id}`}
+                              className="text-decoration-none"
+                              style={{ color: "var(--text-0)" }}
+                            >
+                              <div className="fw-bold">{v.name}</div>
+                            </Link>
+                            {v.verified && <span className="chip"><i className="fa fa-check-circle" /> Verified</span>}
+                          </div>
+                          <div className="muted small mt-1">
+                            {v.rating ? (
+                              <>
+                                <i className="fa fa-star text-warning me-1" />
+                                {Number(v.rating).toFixed(1)}
+                              </>
+                            ) : (
+                              "New seller"
+                            )}{" "}
+                            • {v.productCount ?? 0} products
+                            {v.location ? ` • ${v.location}` : ""}
+                          </div>
+
+                          <div className="d-flex gap-2 mt-2">
+                            <Link to={`/vendors/${v.id}`} className="btn btn-outline-secondary btn-sm">
+                              <i className="fa fa-store me-1" />
+                              Visit Store
+                            </Link>
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => startChatWithVendor(v.id)}
+                            >
+                              <i className="fa fa-comments me-1" />
+                              Chat
+                            </button>
+                            <button
+                              className="btn btn-outline-danger btn-sm ms-auto"
+                              onClick={() => removeVendorFav(v.favId)}
+                              title="Remove vendor"
+                            >
+                              <i className="fa fa-times" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ height: 96 }} />
         </>
       )}
     </div>
