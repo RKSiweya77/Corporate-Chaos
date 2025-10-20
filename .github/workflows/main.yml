@@ -15,11 +15,11 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: Phraser18$
-          POSTGRES_DB: yourdb
+          POSTGRES_DB: postgres  # initial default DB
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -28,14 +28,23 @@ jobs:
       run:
         working-directory: ./vendorlution/backend
 
+    env:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: vendorlution
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      DJANGO_SECRET_KEY: test_secret_key
+      DJANGO_DEBUG: "True"
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
@@ -48,44 +57,40 @@ jobs:
             echo "Waiting for PostgreSQL..."
             sleep 2
           done
-        env:
-          PGPASSWORD: postgres
+
+      - name: Create database
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE vendorlution;"
 
       - name: Run migrations
-        env:
-          DB_HOST: localhost
-          DB_NAME: yourdb
-          DB_USER: postgres
-          DB_PASSWORD: postgres
-        run: python manage.py migrate
+        run: |
+          python manage.py migrate
 
-      - name: Run tests
-        env:
-          DB_HOST: localhost
-          DB_NAME: yourdb
-          DB_USER: postgres
-          DB_PASSWORD: postgres
-        run: python manage.py test
+      - name: Run backend tests
+        run: |
+          python manage.py test
+
 
   frontend:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./vendorlution/frontend
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: "20"
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run frontend tests
-        run: npm test
+        run: npm test -- --watchAll=false
 
       - name: Build frontend
         run: npm run build
