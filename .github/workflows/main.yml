@@ -61,13 +61,13 @@ jobs:
 
       - name: Reset database
         run: |
-          echo "Dropping existing database..."
+          echo "Dropping existing database if exists..."
           PGPASSWORD="Phraser18$" psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS vendorlution;"
           echo "Creating new database..."
           PGPASSWORD="Phraser18$" psql -h localhost -U postgres -c "CREATE DATABASE vendorlution;"
 
       - name: Run migrations
-        run: python manage.py migrate
+        run: python manage.py migrate --noinput
 
       - name: Run backend tests
         run: python manage.py test
@@ -78,7 +78,7 @@ jobs:
       run:
         working-directory: ./vendorlution/frontend
 
-    needs: backend   # Only run frontend after backend is successful
+    needs: backend
 
     steps:
       - name: Checkout code
@@ -97,4 +97,5 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
 
