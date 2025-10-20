@@ -39,3 +39,57 @@ jobs:
       DJANGO_DEBUG: "True"
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+
+      - name: Reset database
+        run: |
+          PGPASSWORD="Phraser18$" psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS vendorlution;"
+          PGPASSWORD="Phraser18$" psql -h localhost -U postgres -c "CREATE DATABASE vendorlution;"
+
+      - name: Run migrations
+        run: python manage.py migrate
+
+      - name: Run backend tests
+        run: python manage.py test
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./vendorlution/frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run frontend tests
+        run: npm test -- --watchAll=false
+
+      - name: Build frontend
+        run: npm run build
