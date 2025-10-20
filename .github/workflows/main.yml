@@ -60,6 +60,9 @@ jobs:
 
       - name: Reset database
         run: |
+          # Terminate any existing connections
+          PGPASSWORD="Phraser18$" psql -h localhost -U postgres -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='vendorlution';"
+          # Drop and recreate database
           PGPASSWORD="Phraser18$" psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS vendorlution;"
           PGPASSWORD="Phraser18$" psql -h localhost -U postgres -c "CREATE DATABASE vendorlution;"
 
@@ -88,7 +91,7 @@ jobs:
         run: npm ci
 
       - name: Run frontend tests
-        run: npx vitest run
+        run: npm test -- --watchAll=false
 
       - name: Build frontend
         run: npm run build
