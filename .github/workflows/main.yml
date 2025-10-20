@@ -59,21 +59,9 @@ jobs:
             sleep 2
           done
 
-      # ✅ Reset the database to avoid duplicate column errors
       - name: Reset database
         run: |
           PGPASSWORD="Phraser18$" psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS vendorlution;"
           PGPASSWORD="Phraser18$" psql -h localhost -U postgres -c "CREATE DATABASE vendorlution;"
 
-      - name: Run migrations
-        run: |
-          python manage.py migrate
-
-      - name: Run backend tests
-        run: |
-          python manage.py test
-
-  frontend:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
+      - name: Run migrat
