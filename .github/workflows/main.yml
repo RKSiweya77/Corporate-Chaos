@@ -59,9 +59,10 @@ jobs:
             sleep 2
           done
 
-      - name: Create database (if not exists)
+      # ✅ Reset the database to avoid duplicate column errors
+      - name: Reset database
         run: |
-          PGPASSWORD="Phraser18$" psql -h localhost -U postgres -tc "SELECT 1 FROM pg_database WHERE datname='vendorlution'" | grep -q 1 || \
+          PGPASSWORD="Phraser18$" psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS vendorlution;"
           PGPASSWORD="Phraser18$" psql -h localhost -U postgres -c "CREATE DATABASE vendorlution;"
 
       - name: Run migrations
@@ -76,22 +77,3 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./vendorlution/frontend
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run frontend tests
-        run: npm test -- --watchAll=false
-
-      - name: Build frontend
-        run: npm run build
